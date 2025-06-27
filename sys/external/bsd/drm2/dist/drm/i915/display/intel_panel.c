@@ -39,6 +39,8 @@ __KERNEL_RCSID(0, "$NetBSD: intel_panel.c,v 1.5 2021/12/26 21:00:51 riastradh Ex
 #include <linux/moduleparam.h>
 #include <linux/pwm.h>
 
+#include <sys/sysctl.h>
+
 #include "intel_connector.h"
 #include "intel_display_types.h"
 #include "intel_dp_aux_backlight.h"
@@ -511,7 +513,6 @@ static inline u32 clamp_user_to_hw(struct intel_connector *connector,
 	return hw_level;
 }
 
-#if IS_ENABLED(CONFIG_BACKLIGHT_CLASS_DEVICE)
 /* Scale hw_level in range [hw_min..hw_max] to [0..user_max]. */
 static inline u32 scale_hw_to_user(struct intel_connector *connector,
 				   u32 hw_level, u32 user_max)
@@ -521,7 +522,6 @@ static inline u32 scale_hw_to_user(struct intel_connector *connector,
 	return scale(hw_level, panel->backlight.min, panel->backlight.max,
 		     0, user_max);
 }
-#endif
 
 static u32 intel_panel_compute_brightness(struct intel_connector *connector,
 					  u32 val)
@@ -1247,6 +1247,7 @@ static u32 intel_panel_get_backlight(struct intel_connector *connector)
 	DRM_DEBUG_DRIVER("get backlight PWM = %d\n", val);
 	return val;
 }
+#endif
 
 /* set backlight brightness to level in range [0..max], scaling wrt hw min */
 static void intel_panel_set_backlight(const struct drm_connector_state *conn_state,
@@ -1264,7 +1265,7 @@ static void intel_panel_set_backlight(const struct drm_connector_state *conn_sta
 
 	WARN_ON(panel->backlight.max == 0);
 
-	hw_level = scale_user_to_hw(connector, user_level, user_max);
+	hw_level = clamp_user_to_hw(connector, user_level, user_max);
 	panel->backlight.level = hw_level;
 
 	if (panel->backlight.enabled)
@@ -1273,6 +1274,7 @@ static void intel_panel_set_backlight(const struct drm_connector_state *conn_sta
 	mutex_unlock(&dev_priv->backlight_lock);
 }
 
+#if IS_ENABLED(CONFIG_BACKLIGHT_CLASS_DEVICE)
 static int intel_backlight_device_update_status(struct backlight_device *bd)
 {
 	struct intel_connector *connector = bl_get_data(bd);
@@ -1931,6 +1933,63 @@ void intel_panel_update_backlight(struct intel_encoder *encoder,
 	mutex_unlock(&dev_priv->backlight_lock);
 }
 
+#ifdef __NetBSD__
+static int
+intel_backlight_sysctl_handle(SYSCTLFN_ARGS)
+{
+	struct sysctlnode node = *rnode;
+	struct intel_connector *connector = node.sysctl_data;
+	const struct drm_connector_state *conn_state = connector->base.state;
+	struct drm_device *dev = connector->base.dev;
+	struct drm_i915_private *dev_priv = dev->dev_private;
+	struct intel_panel *panel = &connector->panel;
+	uint32_t user_level;
+	int val, err;
+
+	mutex_lock(&dev_priv->backlight_lock);
+	// Scaling hardware brightness to 0..100 scale.
+	user_level = scale_hw_to_user(connector, panel->backlight.level, 100);
+	mutex_unlock(&dev_priv->backlight_lock);
+
+	val = user_level;
+	node.sysctl_data = &val;
+	err = sysctl_lookup(SYSCTLFN_CALL(&node));
+	if (err || newp == NULL)
+		return err;
+
+	if (val != user_level && val >= 0 && val <= 100) {
+		drm_modeset_lock(&dev->mode_config.connection_mutex, NULL);
+		intel_panel_set_backlight(conn_state, val, 100);
+		drm_modeset_unlock(&dev->mode_config.connection_mutex);
+	}
+
+	return err;
+}
+
+static void
+intel_backlight_sysctl_setup(struct intel_connector *connector)
+{
+	const struct sysctlnode *rnode;
+
+	if (sysctl_createv(NULL, 0, NULL, &rnode, 0, CTLTYPE_NODE, "i915", NULL,
+	    NULL, 0, NULL, 0, CTL_HW, CTL_CREATE, CTL_EOL) != 0) {
+		goto fail;
+	}
+	if (sysctl_createv(NULL, 0, &rnode, NULL, CTLFLAG_READWRITE,
+	    CTLTYPE_INT, "backlight",
+	    SYSCTL_DESCR("Backlight brightness (0-100)"),
+	    intel_backlight_sysctl_handle,
+	    0, (void *)connector, 0, CTL_CREATE, CTL_EOL) != 0) {
+		goto fail;
+	}
+	return;
+
+fail:
+	aprint_error("%s: Couldn't add sysctl nodes\n", __func__);
+}
+#endif
+
+
 int intel_panel_setup_backlight(struct drm_connector *connector, enum pipe pipe)
 {
 	struct drm_i915_private *dev_priv = to_i915(connector->dev);
@@ -1963,6 +2022,11 @@ int intel_panel_setup_backlight(struct drm_connector *connector, enum pipe pipe)
 	}
 
 	panel->backlight.present = true;
+
+#ifdef __NetBSD__
+	// Add SYSCTL for setting brightness
+	intel_backlight_sysctl_setup(intel_connector);
+#endif
 
 	DRM_DEBUG_KMS("Connector %s backlight initialized, %s, brightness %u/%u\n",
 		      connector->name,
