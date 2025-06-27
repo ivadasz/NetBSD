@@ -4918,6 +4918,51 @@ iwm_update_beacon_abort(struct iwm_softc *sc, struct iwm_node *in, int enable)
 	return iwm_beacon_filter_send_cmd(sc, &cmd);
 }
 
+#if 0
+static bool
+iwm_power_is_radar(struct iwm_softc *sc)
+{
+	struct ieee80211com *ic = &sc->sc_ic;
+	bool radar_detect = false;
+
+	struct ieee80211_node *ni = ic->ic_bss;
+	chan = ic->
+}
+#endif
+
+#if 0
+static void
+iwm_power_config_skip_dtim(struct iwm_softc *sc,
+    struct iwm_mac_power_cmd *cmd)
+{
+	struct ieee80211com *ic = &sc->sc_ic;
+	struct ieee80211_node *ni = ic->ic_bss;
+
+	int dtmiper = ni->ni_dtim_period;
+	int skip;
+
+	/* disable, in case we're supposed to override */
+	cmd->skip_dtim_periods = 0;
+	cmd->flags &= ~htole16(IWM_POWER_FLAGS_SKIP_OVER_DTIM_MSK);
+
+	if (iwm_mvm_power_is_radar(sc))
+		return;
+
+	if (dtimper >= 10)
+		return;
+
+	/* TODO: check that multicast wake lock is off */
+
+	if (iwm_power_scheme != IWM_POWER_SCHEME_LP)
+		return;
+	skip = 2;
+
+	/* the fimware really expects "look at every X DTIMs", so add 1 */
+	cmd->skip_dtim_periods = 1 + skip;
+	cmd->flags |= htole16(IWM_POWER_FLAGS_SKIP_OVER_DTIM_MSK);
+}
+#endif
+
 static void
 iwm_power_build_cmd(struct iwm_softc *sc, struct iwm_node *in,
     struct iwm_mac_power_cmd *cmd)
@@ -4943,8 +4988,14 @@ iwm_power_build_cmd(struct iwm_softc *sc, struct iwm_node *in,
 	keep_alive = roundup(keep_alive, 1000) / 1000;
 	cmd->keep_alive_seconds = htole16(keep_alive);
 
-#ifdef notyet
+#if 0
+	if (sc->sc_ps_disabled)
+		return;
+
+	iwm_power_config_skip_dtim(sc, cmd);
+
 	cmd->flags = htole16(IWM_POWER_FLAGS_POWER_SAVE_ENA_MSK);
+	cmd->flags = htole16(IWM_POWER_FLAGS_POWER_MANAGEMENT_ENA_MSK);
 	cmd->rx_data_timeout = IWM_DEFAULT_PS_RX_DATA_TIMEOUT;
 	cmd->tx_data_timeout = IWM_DEFAULT_PS_TX_DATA_TIMEOUT;
 #endif
