@@ -359,8 +359,12 @@ acpicpu_md_cstate_start(struct acpicpu_softc *sc)
 	x86_cpu_idle_get(&native_idle, native_idle_text, size);
 
 	for (i = 0; i < ACPI_C_STATE_COUNT; i++) {
+		int method;
 
 		cs = &sc->sc_cstate[i];
+		method = cs->cs_method;
+		aprint_normal_dev(sc->sc_dev, "ACPI CState%d: method: %s\n", i,
+		    method == ACPICPU_C_STATE_HALT ? "halt" : (method == ACPICPU_C_STATE_FFH ? "mwait" : "sysio"));
 
 		if (cs->cs_method == ACPICPU_C_STATE_HALT) {
 			ipi = true;
@@ -416,7 +420,9 @@ acpicpu_md_cstate_enter(int method, int state)
 		if (__predict_false(ci->ci_want_resched != 0))
 			return;
 
-		x86_mwait((state - 1) << 4, 0);
+		//x86_mwait((state - 1) << 4, 0);
+		// TODO: Use mwait hint SYSCTL value
+		x86_mwait(0x60, 0);
 		break;
 
 	case ACPICPU_C_STATE_HALT:

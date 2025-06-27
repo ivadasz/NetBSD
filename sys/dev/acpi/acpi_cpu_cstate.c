@@ -230,6 +230,11 @@ out:
 	return rv;
 }
 
+#define MWAIT_EAX_TO_CX(x)	((((x) >> 4) + 1) & 0xf)
+#define MWAIT_EAX_TO_CX_SUB(x)	((x) & 0xf)
+#define MWAIT_EAX_HINT(cx, sub)	\
+    (((((uint32_t)(cx) - 1) & 0xf) << 4) | ((sub) & 0xf))
+
 static ACPI_STATUS
 acpicpu_cstate_cst_add(struct acpicpu_softc *sc, ACPI_OBJECT *elm)
 {
@@ -332,6 +337,14 @@ acpicpu_cstate_cst_add(struct acpicpu_softc *sc, ACPI_OBJECT *elm)
 
 	case ACPI_ADR_SPACE_FIXED_HARDWARE:
 		state.cs_method = ACPICPU_C_STATE_FFH;
+
+		aprint_normal_dev(sc->sc_dev,
+		    "Found C-State entry: 0x%08lx\n",
+		    reg->reg_addr & 0xffffffff);
+		aprint_normal_dev(sc->sc_dev,
+		    "C%d -> CPU specific C%ld sub state %ld\n", type,
+		    MWAIT_EAX_TO_CX(reg->reg_addr & 0xffffffff),
+		    MWAIT_EAX_TO_CX_SUB(reg->reg_addr & 0xffffffff));
 
 		switch (type) {
 

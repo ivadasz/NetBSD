@@ -1518,7 +1518,8 @@ x86_cpu_idle_mwait(void)
 	if (__predict_false(ci->ci_want_resched)) {
 		return;
 	}
-	x86_mwait(0, 0);
+	// TODO: Make the MWAIT hint settable via SYSCTL
+	x86_mwait(0x60, 0);
 }
 
 void
