@@ -31,6 +31,7 @@
 
 struct igpio_softc {
 	device_t		sc_dev;
+	device_t		sc_gpiodev;
 	const char		*sc_acpi_hid;
 	bus_space_tag_t		sc_bst;
 	int			sc_nbar;
@@ -56,6 +57,8 @@ void	igpio_pin_ctl(void *, int, int);
 void	*igpio_intr_establish(void *, int, int, int, int (*)(void *), void *);
 void	igpio_intr_disestablish(void *, void *);
 bool	igpio_intr_str(void *, int, int, char *, size_t);
+void	igpio_intr_mask(void *, void *);
+void	igpio_intr_unmask(void *, void *);
 int	igpio_intr(void *);
 
 

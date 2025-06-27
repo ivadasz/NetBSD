@@ -352,6 +352,8 @@ igpio_attach(struct igpio_softc *sc)
 	sc->sc_gc.gp_intr_establish = igpio_intr_establish;
 	sc->sc_gc.gp_intr_disestablish = igpio_intr_disestablish;
 	sc->sc_gc.gp_intr_str = igpio_intr_str;
+	sc->sc_gc.gp_intr_mask = igpio_intr_mask;
+	sc->sc_gc.gp_intr_unmask = igpio_intr_unmask;
 
 	memset(&gba, 0, sizeof(gba));
 	gba.gba_gc = &sc->sc_gc;
@@ -359,8 +361,9 @@ igpio_attach(struct igpio_softc *sc)
 	gba.gba_npins = sc->sc_npins;
 
 #if NGPIO > 0
-	config_found(sc->sc_dev, &gba, gpiobus_print, CFARGS_NONE);
+	sc->sc_gpiodev = config_found(sc->sc_dev, &gba, gpiobus_print, CFARGS_NONE);
 #endif
+	device_printf(self, "Attached child %s\n", device_xname(sc->sc_gpiodev));
 
 	success = 1;
 out:
@@ -413,7 +416,6 @@ igpio_pincfg(struct igpio_bank *ib, int pin, int reg)
 	return pincfg;
 }
 
-#if notyet
 static struct igpio_pin_group *
 igpio_find_group(struct igpio_bank *ib, int pin)
 {
@@ -440,6 +442,7 @@ igpio_find_group(struct igpio_bank *ib, int pin)
 	return found_ipg;
 }
 
+#if notyet
 static bus_addr_t
 igpio_groupcfg(struct igpio_bank *ib, int pin)
 {
@@ -603,12 +606,17 @@ igpio_intr_establish(void *priv, int pin, int ipl, int irqmode,
 {
 	struct igpio_softc *sc = priv;
 	struct igpio_bank *ib = igpio_find_bank(sc, pin);
-	bus_addr_t cfg0;
+	struct igpio_bank_setup *ibs = ib->ib_setup;
+	struct igpio_pin_group *ipg = igpio_find_group(ib, pin);
+	bus_addr_t cfg0, cfg1;
 	uint32_t val, newval;
 	struct igpio_intr *ii;
+	int offset;
+	bus_addr_t ie_reg, is_reg, sw_own_reg;
 
 	pin = igpio_bank_pin(ib, pin);
 	cfg0 = igpio_pincfg(ib, pin, IGPIO_PADCFG0);
+	cfg1 = igpio_pincfg(ib, pin, IGPIO_PADCFG1);
 
 	ii = &ib->ib_intr[pin];
 	ii->ii_func = func;
@@ -618,9 +626,17 @@ igpio_intr_establish(void *priv, int pin, int ipl, int irqmode,
 
 	mutex_enter(&ib->ib_mtx);
 
+	// Get PAD SW ownership
+	sw_own_reg = 0xD0 + ipg->ipg_groupno * 4;
+	device_printf(sc->sc_dev, "Writing register 0x%lx for pad_sw_own in bar %d\n",
+	    sw_own_reg, ib->ib_barno);
+	bus_space_write_4(sc->sc_bst, sc->sc_bsh[ib->ib_barno], sw_own_reg, __BIT(pin % 24));
+
+	// Set Pin Configuration
 	val = bus_space_read_4(sc->sc_bst, sc->sc_bsh[ib->ib_barno], cfg0);
 	newval = val;
 
+#if 0
 	newval &= ~IGPIO_PADCFG0_PMODE_MASK;
 	newval |=  IGPIO_PADCFG0_PMODE_GPIO;
 
@@ -630,6 +646,7 @@ igpio_intr_establish(void *priv, int pin, int ipl, int irqmode,
 	newval |= (IGPIO_PADCFG0_GPIROUTIOXAPIC | IGPIO_PADCFG0_GPIROUTSCI);
 	newval |= (IGPIO_PADCFG0_GPIROUTSMI | IGPIO_PADCFG0_GPIROUTNMI);
 
+	// TODO: This fails to properly clear fields using __BITS bitmasks.
 	newval &= ~IGPIO_PADCFG0_RXINV;
 	newval &= ~IGPIO_PADCFG0_RXEVCFG_EDGE;
 	newval &= ~IGPIO_PADCFG0_RXEVCFG_LEVEL;
@@ -661,6 +678,15 @@ igpio_intr_establish(void *priv, int pin, int ipl, int irqmode,
 		}
 		break;
 	}
+#endif
+	if (val & 0x200)
+		newval &= ~0x200;
+	if ((val & 0x6000000) != 0) {
+		if ((val & 0x6000000) != 0x6000000)
+			newval &= ~0x6000000;
+	}
+	if (!(val & 0x800000))
+		newval |= 0x800000;
 
 
 	DPRINTF(("%s: bar %d pin %d val #%x (%s) -> #%x (%s)\n",
@@ -668,7 +694,43 @@ igpio_intr_establish(void *priv, int pin, int ipl, int irqmode,
 	    val, igpio_padcfg0_print(val, 0),
 	    newval, igpio_padcfg0_print(newval, 1)));
 
-	bus_space_write_4(sc->sc_bst, sc->sc_bsh[ib->ib_barno], cfg0, newval);
+	if (val != newval) {
+		device_printf(sc->sc_dev, "Updating cfg0 from 0x%08x to 0x%08x\n",
+		    val, newval);
+		device_printf(sc->sc_dev, "Writing register 0x%lx for cfg0 in bar %d\n",
+		    cfg0, ib->ib_barno);
+		bus_space_write_4(sc->sc_bst, sc->sc_bsh[ib->ib_barno], cfg0, newval);
+	}
+
+	val = bus_space_read_4(sc->sc_bst, sc->sc_bsh[ib->ib_barno], cfg1);
+	newval = val;
+	if ((val & 0x3C00) != 0x2400 && (val & 0x3C00) != 0x3000) {
+		if ((val & 0x3C00) == 0) {
+			newval |= 0x2800;
+		} else {
+			device_printf(sc->sc_dev, "Wrong terminating is 0x%08x\n",
+			    val);
+		}
+	}
+	if (val != newval) {
+		device_printf(sc->sc_dev, "Updating cfg1 from 0x%08x to 0x%08x\n",
+		    val, newval);
+		device_printf(sc->sc_dev, "Writing register 0x%lx for cfg1 in bar %d\n",
+		    cfg1, ib->ib_barno);
+		bus_space_write_4(sc->sc_bst, sc->sc_bsh[ib->ib_barno], cfg1, newval);
+	}
+
+	offset = ipg->ipg_groupno * 4;
+	ie_reg = offset + ibs->ibs_gpi_ie;
+	is_reg = offset + ibs->ibs_gpi_is;
+	// Clear Status
+	device_printf(sc->sc_dev, "Writing register 0x%lx for is in bar %d\n",
+	    is_reg, ib->ib_barno);
+	bus_space_write_4(sc->sc_bst, sc->sc_bsh[ib->ib_barno], is_reg, __BIT(pin % 24));
+	// Enable Interrupt
+	device_printf(sc->sc_dev, "Writing register 0x%lx for ie in bar %d\n",
+	    ie_reg, ib->ib_barno);
+	bus_space_write_4(sc->sc_bst, sc->sc_bsh[ib->ib_barno], ie_reg, __BIT(pin % 24));
 
 	mutex_exit(&ib->ib_mtx);
 
@@ -732,6 +794,54 @@ igpio_intr_str(void *priv, int pin, int irqmode,
 	return (rv < buflen);
 }
 
+void
+igpio_intr_mask(void *priv, void *ih)
+{
+	struct igpio_softc *sc = priv;
+	struct igpio_intr *ii = ih;
+	struct igpio_bank *ib = igpio_find_bank(sc, ii->ii_pin);
+	struct igpio_bank_setup *ibs = ib->ib_setup;
+	struct igpio_pin_group *ipg = igpio_find_group(ib, ii->ii_pin);
+	uint32_t enabled;
+	int pin;
+	int offset;
+	bus_addr_t ie_reg;
+
+	pin = ii->ii_pin;
+	offset = ipg->ipg_groupno * 4;
+	ie_reg = offset + ibs->ibs_gpi_ie;
+
+	enabled = bus_space_read_4(
+	    sc->sc_bst, sc->sc_bsh[ib->ib_barno], ie_reg);
+	enabled &= ~__BIT(pin % 24);
+	bus_space_write_4(
+	    sc->sc_bst, sc->sc_bsh[ib->ib_barno], ie_reg, enabled);
+}
+
+void
+igpio_intr_unmask(void *priv, void *ih)
+{
+	struct igpio_softc *sc = priv;
+	struct igpio_intr *ii = ih;
+	struct igpio_bank *ib = igpio_find_bank(sc, ii->ii_pin);
+	struct igpio_bank_setup *ibs = ib->ib_setup;
+	struct igpio_pin_group *ipg = igpio_find_group(ib, ii->ii_pin);
+	uint32_t enabled;
+	int pin;
+	int offset;
+	bus_addr_t ie_reg;
+
+	pin = ii->ii_pin;
+	offset = ipg->ipg_groupno * 4;
+	ie_reg = offset + ibs->ibs_gpi_ie;
+
+	enabled = bus_space_read_4(
+	    sc->sc_bst, sc->sc_bsh[ib->ib_barno], ie_reg);
+	enabled |= __BIT(pin % 24);
+	bus_space_write_4(
+	    sc->sc_bst, sc->sc_bsh[ib->ib_barno], ie_reg, enabled);
+}
+
 int
 igpio_intr(void *priv)
 {
@@ -759,8 +869,11 @@ igpio_intr(void *priv)
 			if (strcmp(ipg->ipg_acpi_hid,
 			    ibs->ibs_acpi_hid) != 0)
 				continue;
+			if ((ipg->ipg_first_pin < ibs->ibs_first_pin) ||
+			    (ipg->ipg_first_pin > ibs->ibs_last_pin))
+				continue;
 
-			offset = ib->ib_padbar + ipg->ipg_groupno * 4;
+			offset = ipg->ipg_groupno * 4;
 			is_reg = offset + ibs->ibs_gpi_is;
 			ie_reg = offset + ibs->ibs_gpi_ie;
 
@@ -773,29 +886,30 @@ igpio_intr(void *priv)
 			 */
 			pending = raised & enabled;
 
-			for (b = 0; b < 32; b++) {
+			for (b = 0; b < 24; b++) {
 				int pin;
 				int (*func)(void *);
 				void *arg;
 
-				if ((pending & (1 << b)) == 0)
+				if ((pending & __BIT(b)) == 0)
 					continue;
 
 				pin = ipg->ipg_first_pin + b;
+				pin = igpio_bank_pin(ib, pin);
 				func = ib->ib_intr[pin].ii_func;
 				arg = ib->ib_intr[pin].ii_arg;
 
 				/* XXX ack intr, handled or not? */
-				raised &= ~(1 << b);
+				raised &= ~__BIT(b);
 
 				if (func == NULL)
 					continue;
 
 				ret |= func(arg);
+				bus_space_write_4(sc->sc_bst, bsh, is_reg, __BIT(b));
 			}
-
-			bus_space_write_4(sc->sc_bst, bsh, is_reg, raised);
-
+			if (raised)
+				bus_space_write_4(sc->sc_bst, bsh, is_reg, raised);
 		}
 
 		mutex_exit(&ib->ib_mtx);

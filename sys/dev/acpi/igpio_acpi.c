@@ -38,6 +38,7 @@ __KERNEL_RCSID(0, "$NetBSD: igpio_acpi.c,v 1.3 2024/02/02 22:14:05 andvar Exp $"
 
 #include <dev/acpi/acpireg.h>
 #include <dev/acpi/acpivar.h>
+#include <dev/acpi/acpi_gpio.h>
 #include <dev/acpi/acpi_intr.h>
 #include <dev/acpi/acpi_event.h>
 
@@ -56,6 +57,7 @@ static int	igpio_acpi_match(device_t, cfdata_t, void *);
 static void	igpio_acpi_attach(device_t, device_t, void *);
 static int	igpio_acpi_detach(device_t, int);
 
+static int	igpio_acpi_translate(void *, ACPI_RESOURCE_GPIO *, void **);
 static void	igpio_acpi_register_event(void *, struct acpi_event *, ACPI_RESOURCE_GPIO *);
 static int	igpio_acpi_intr(void *);
 
@@ -167,9 +169,10 @@ igpio_acpi_attach(device_t parent, device_t self, void *aux)
 
 	rv = acpi_event_create_gpio(self, asc->sc_handle, igpio_acpi_register_event, asc);
 	if (ACPI_FAILURE(rv)) {
-		if (rv != AE_NOT_FOUND)
+		if (rv != AE_NOT_FOUND) {
 			aprint_error_dev(self, "failed to create events: %s\n", AcpiFormatException(rv));
-		goto done;
+			goto done;
+		}
 	}
 
 	asc->sc_intr = acpi_intr_establish(self,
@@ -177,6 +180,19 @@ igpio_acpi_attach(device_t parent, device_t self, void *aux)
 	    IPL_VM, false, igpio_acpi_intr, asc, device_xname(self));
 	if (asc->sc_intr == NULL)
 		aprint_error_dev(self, "couldn't establish interrupt\n");
+	if (asc->sc_isc.sc_gpiodev != NULL) {
+		device_printf(asc->sc_isc.sc_dev,
+		    "Registering ACPI gpio handler\n");
+		rv = acpi_gpio_register(aa->aa_node, self,
+		    igpio_acpi_translate, asc);
+		if (ACPI_FAILURE(rv)) {
+			aprint_error_dev(self,
+			    "failed to register GPIO handler: %s\n",
+			    AcpiFormatException(rv));
+		}
+	} else {
+		device_printf(asc->sc_isc.sc_dev, "No GPIO child device\n");
+	}
 
 done:
 	acpi_resource_cleanup(&res);
@@ -216,6 +232,30 @@ igpio_acpi_detach(device_t self, int flags)
 	}
 
 	return 0;
+}
+
+static int
+igpio_acpi_translate(void *priv, ACPI_RESOURCE_GPIO *gpio, void **gpiop)
+{
+	struct igpio_acpi_softc * const asc = priv;
+	const ACPI_INTEGER pin = gpio->PinTable[0];
+	int xpin;
+
+	xpin = pin;
+
+	aprint_normal_dev(asc->sc_isc.sc_dev, "translate %#lx -> %u\n", pin, xpin);
+
+	if (gpiop != NULL) {
+		if (asc->sc_isc.sc_gpiodev != NULL) {
+			*gpiop = device_private(asc->sc_isc.sc_gpiodev);
+		} else {
+			device_printf(asc->sc_isc.sc_dev,
+			    "no gpiodev for pin %#lx -> %u\n", pin, xpin);
+			xpin = -1;
+		}
+	}
+
+	return xpin;
 }
 
 static void

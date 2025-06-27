@@ -545,8 +545,9 @@ gpio_intr_establish(void *gpio, struct gpio_pinmap *map, int pin, int ipl,
 		return (NULL);
 
 	irqmode = gpio_irqmode_sanitize(irqmode);
-	if (irqmode == 0)
-		return (NULL);
+	if (irqmode == 0) {
+		//return (NULL);
+	}
 
 	if (! gpio_pin_irqmode_issupported(gpio, map, pin, irqmode))
 		return (NULL);
