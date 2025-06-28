@@ -87,17 +87,26 @@ ehci_fdt_attach(device_t parent, device_t self, void *aux)
 	}
 
 	/* Enable clocks */
-	for (n = 0; (clk = fdtbus_clock_get_index(phandle, n)) != NULL; n++)
+	for (n = 0; (clk = fdtbus_clock_get_index(phandle, n)) != NULL; n++) {
+		aprint_normal("%s Enabling clock %d\n", device_xname(self), n);
 		if (clk_enable(clk) != 0) {
 			aprint_error(": couldn't enable clock #%d\n", n);
 			return;
 		}
-	/* De-assert resets */
-	for (n = 0; (rst = fdtbus_reset_get_index(phandle, n)) != NULL; n++)
+	}
+	/* Apply Reset */
+	for (n = 0; (rst = fdtbus_reset_get_index(phandle, n)) != NULL; n++) {
+		aprint_normal("%s Deasserting reset %d\n", device_xname(self), n);
+		if (fdtbus_reset_assert(rst) != 0) {
+			aprint_error(": couldn't assert reset #%d\n", n);
+			return;
+		}
+		delay(20000);
 		if (fdtbus_reset_deassert(rst) != 0) {
 			aprint_error(": couldn't de-assert reset #%d\n", n);
 			return;
 		}
+	}
 
 	/* Enable optional phy */
 	phy = fdtbus_phy_get(phandle, "usb");

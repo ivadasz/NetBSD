@@ -1,0 +1,312 @@
+#	$NetBSD$
+#
+#	Imre Vadasz
+#
+
+include "arch/evbarm/conf/std.stmp1"
+
+#options	BOOT_ARGS="\"verbose\""
+
+#options 	INCLUDE_CONFIG_FILE	# embed config file in kernel binary
+#options 	MSGBUFSIZE=65536
+#options 	KSTACK_CHECK_MAGIC
+
+options		EARLYCONS=stmp1, CONSADDR=0x40010000
+#Register offset for transmit: 0x28 Bits 0-7
+#Register offset for ready: 0x1C Bit 7
+
+# estimated number of users
+maxusers	16
+
+# Standard system options
+
+options 	RTC_OFFSET=0	# hardware clock is this many mins. west of GMT
+options 	NTP		# NTP phase/frequency locked loop
+
+#options 	VERBOSE_INIT_ARM # verbose bootstraping messages
+
+# CPU options
+
+options 	CPU_CORTEX
+#options		CORTEX_PMC
+makeoptions	CPUFLAGS="-mcpu=cortex-a7 -mfpu=neon"
+
+options		SOC_STMP1
+
+options		MULTIPROCESSOR
+no options 	TPIDRPRW_IS_CURLWP
+options 	TPIDRPRW_IS_CURCPU
+options 	__HAVE_GENERIC_CPU_INITCLOCKS
+
+# File systems
+
+file-system	FFS		# UFS
+#file-system	LFS		# log-structured file system
+file-system	MFS		# memory file system
+#file-system	NFS		# Network file system
+#file-system 	ADOSFS		# AmigaDOS-compatible file system
+file-system 	EXT2FS		# second extended file system (linux)
+#file-system	CD9660		# ISO 9660 + Rock Ridge file system
+file-system	MSDOSFS		# MS-DOS file system
+#file-system	FDESC		# /dev/fd
+#file-system    FILECORE        # Acorn filecore file system
+file-system	KERNFS		# /kern
+file-system	NULLFS		# loopback file system
+file-system	PROCFS		# /proc
+#file-system	PUFFS		# Userspace file systems (e.g. ntfs-3g & sshfs)
+#file-system	UMAPFS		# NULLFS + uid and gid remapping
+#file-system	UNION		# union file system
+file-system	PTYFS		# /dev/pts/N support
+
+# File system options
+#options 	FFS_EI		# FFS Endian Independent support
+#options 	QUOTA		# legacy UFS quotas
+#options 	QUOTA2		# new, in-filesystem UFS quotas
+#options 	UFS_DIRHASH	# UFS Large Directory Hashing
+#options 	UFS_EXTATTR	# Extended attribute support for UFS1
+#options 	DISKLABEL_EI	# disklabel Endian Independent support
+#options 	NFSSERVER	# Network File System server
+options 	WAPBL		# File system journaling support
+
+# Wedge support
+options 	DKWEDGE_AUTODISCOVER	# Automatically add dk(4) instances
+options 	DKWEDGE_METHOD_GPT	# Supports GPT partitions as wedges
+
+# Networking options
+
+#options 	GATEWAY		# packet forwarding
+options 	INET		# IP + ICMP + TCP + UDP
+options 	INET6		# IPV6
+#options 	IPSEC		# IP security
+#options 	IPSEC_DEBUG	# debug for IP security
+#options 	MROUTING	# IP multicast routing
+#options 	NETATALK	# AppleTalk networking
+#options 	PPP_BSDCOMP	# BSD-Compress compression support for PPP
+#options 	PPP_DEFLATE	# Deflate compression support for PPP
+#options 	PPP_FILTER	# Active filter support for PPP (requires bpf)
+#options 	TCP_DEBUG	# Record last TCP_NDEBUG packets with SO_DEBUG
+
+#options 	NFS_BOOT_DHCP
+#options 	NFS_BOOT_BOOTPARAM
+#options 	NFS_BOOT_RWSIZE=1024
+
+# Compatibility options
+
+#include 	"conf/compat_netbsd30.config"
+#options 	COMPAT_NETBSD32	# allow running arm (e.g. non-earm) binaries
+
+# Shared memory options
+
+options 	SYSVMSG		# System V-like message queues
+options 	SYSVSEM		# System V-like semaphores
+options 	SYSVSHM		# System V-like memory sharing
+
+# Device options
+
+#options 	MEMORY_DISK_HOOKS	# boottime setup of ramdisk
+#options 	MEMORY_DISK_ROOT_SIZE=3400	# Size in blocks
+#options 	MEMORY_DISK_IS_ROOT	# use memory disk as root
+
+# Console options.  The default console is speed is 115200 bps.
+#options 	CONSPEED=9600		# Console speed
+
+# Miscellaneous kernel options
+options 	KTRACE		# system call tracing, a la ktrace(1)
+options 	IRQSTATS	# manage IRQ statistics
+#options 	SCSIVERBOSE	# Verbose SCSI errors
+#options 	PCIVERBOSE	# Verbose PCI descriptions
+#options 	MIIVERBOSE	# Verbose MII autoconfuration messages
+#options 	PCI_CONFIG_DUMP	# verbosely dump PCI config space
+#options 	DDB_KEYCODE=0x40
+#options 	USERCONF	# userconf(4) support
+#options	PIPE_SOCKETPAIR	# smaller, but slower pipe(2)
+
+# Development and Debugging options
+
+#options 	DIAGNOSTIC	# internal consistency checks
+options 	DEBUG
+#options 	UVMHIST		# kernhist for uvm/pmap subsystems
+options 	DDB		# in-kernel debugger
+options 	DDB_ONPANIC=1
+options 	DDB_HISTORY_SIZE=100	# Enable history editing in DDB
+makeoptions	DEBUG="-g"	# compile full symbol table
+makeoptions	COPY_SYMTAB=1
+
+##options 	PMAP_INCLUDE_PTE_SYNC
+##options 	LOCKDEBUG
+
+config		netbsd		root on ? type ?
+
+# The main bus device
+armfdt0		at root
+simplebus*	at fdt? pass 0
+
+# The boot CPU
+cpu*		at fdt0 pass 0
+cpus*		at fdt0 pass 0
+
+# Architecture options
+gtmr*		at fdt? pass 1		# ARM Generic Timer
+armgtmr0	at gtmr?
+
+# Interrupt controller
+gic* 		at fdt? pass 1		# ARM GIC
+armgic0 	at gic?
+
+# Power State Coordination Interface (PSCI)
+psci* 		at fdt?
+
+# System controller
+stmp1rcc*		at fdt? pass 1		# STM32P1 RCC
+
+# Clock and reset controllers
+fclock* 	at fdt? pass 1
+fregulator*	at fdt? pass 4
+
+# Power Regulator
+stmp1pwr0	at fdt? pass 1
+
+# SoC Thermal Sensor
+stmp1dts0	at fdt?
+
+# peripherals
+
+# interrupt controller & gpio pins
+
+stmp1pinctrl0	at fdt0 pass 2
+stmp1pinctrlz0	at fdt0 pass 2
+
+# serial ports
+stmp1uart0	at fdt0 # addr 0x40010000	# UART4
+
+# these two are not hanging off of pxaip, not really tested either
+#com3	at pxaip0 addr 0x14300000	# COM5
+#com4	at pxaip0 addr 0x14300010	# COM4
+
+# SMC91C111 ethernet
+#sm0	at pxaip0 addr 0x08000300 intr 0
+
+# MII/PHY support
+#sqphy*	at mii? phy ?			# Seeq 80220/80221/80223 PHYs
+
+# I2C controllers
+options 	I2C_MAX_ADDR=0xfff
+stmp1iic*	at fdt?			# STM32MP15x I2C
+iic* 		at i2cbus?
+
+# I2C devices
+axp20x* 	at iic?			# AXP209 Power Management IC
+axp20xreg* 	at axp20x?
+#seeprom* 	at iic?			# AT24Cxx Serial EEPROM
+itehdmi*	at iic1 addr 0x4d	# ITE IT66121 HDMI controller
+
+# Display controller
+
+stmp1ltdc0	at fdt?			# STM32MP1 LCD Controller
+genfb0		at fdt?
+wsdisplay*	at stmp1ltdc0 console ?
+
+options		VCONS_DRAW_INTR
+options		WSEMUL_VT100
+options		WSDISPLAY_CUSTOM_OUTPUT
+options		WS_DEFAULT_FG=WSCOL_WHITE
+options		WS_DEFAULT_BG=WSCOL_BLACK
+options		WS_KERNEL_FG=WSCOL_GREEN
+options		WS_KERNEL_BG=WSCOL_BLACK
+options		WSDISPLAY_COMPAT_PCVT
+options		WSDISPLAY_COMPAT_SYSCONS
+options		WSDISPLAY_COMPAT_USL
+options		WSDISPLAY_COMPAT_RAWKBD
+options		WSDISPLAY_DEFAULTSCREENS=4
+options		WSDISPLAY_MULTICONS
+options		WSDISPLAY_SCROLLSUPPORT
+pseudo-device	wsmux
+pseudo-device	wsfont
+options		FONT_BOLD8x16
+options		FONT_BOLD16x32
+
+# SDMMC
+#options	SDMMC_DEBUG
+plmmc0 		at fdt?			# ARM PrimeCell MCI
+sdmmc* 		at sdmmcbus?
+ld0 		at sdmmc0
+
+# USB
+#options	USB_DEBUG
+#options	EHCI_DEBUG
+
+#usbnopphy* 	at fdt? pass 9		# Generic USB PHY
+stmp1usbphy* 	at fdt? pass 9		# STM32MP1 USB PHY
+
+ehci* 		at fdt?			# EHCI
+#ohci* 		at fdt?			# OHCI
+usb* 		at usbus?
+uhub*		at usb?
+uhub*	at uhub? port ? configuration ? interface ?
+
+# USB HID device
+uhidev*	at uhub? port ? configuration ? interface ?
+
+# USB Mice
+ums*	at uhidev? reportid ?
+wsmouse* at ums? mux 0
+
+# USB Keyboards
+ukbd*	at uhidev? reportid ?
+wskbd*	at ukbd? console ? mux 1
+
+# USB serial adapter
+ucycom* at uhidev? reportid ?
+
+# USB Printer
+ulpt*	at uhub? port ? configuration ? interface ?
+
+# USB Mass Storage
+umass*	at uhub? port ? configuration ? interface ?
+scsibus* at umass?
+sd*	at scsibus? target ? lun ?
+
+# USB audio
+uaudio*	at uhub? port ? configuration ?
+audio*	at uaudio?
+
+# USB MIDI
+umidi* at uhub? port ? configuration ?
+
+# USB 802.11 adapters
+urtwn*	at uhub? port ?		# Realtek RTL8188CU/RTL8192CU 802.11b/g/n
+
+# Serial adapters
+uplcom* at uhub? port ? 	# I/O DATA USB-RSAQ2 serial adapter
+ucom*	at uplcom? portno ?
+
+# USB Video capture devices
+uvideo* at uhub?		# USB Video Class capture devices
+video* at videobus?
+
+# MIDI
+midi* 		at midibus?
+pseudo-device	sequencer			# MIDI sequencer
+
+# Pseudo-Devices
+
+# disk/mass storage pseudo-devices
+#pseudo-device	md			# memory disk device (ramdisk)
+pseudo-device	vnd			# disk-like interface to files
+#pseudo-device	fss			# file system snapshot device
+#pseudo-device	putter			# for puffs and pud
+
+# network pseudo-devices
+#pseudo-device	bpfilter		# Berkeley packet filter
+pseudo-device	loop			# network loopback
+#pseudo-device	kttcp			# network loopback
+
+# miscellaneous pseudo-devices
+pseudo-device	pty			# pseudo-terminals
+#options	RND_COM
+pseudo-device	clockctl		# user control of clock subsystem
+#pseudo-device	ksyms			# /dev/ksyms
+
+# data mover pseudo-devices
+#pseudo-device	swdmover		# software dmover(9) back-end
+#pseudo-device	dmoverio		# /dev/dmover dmover(9) interface

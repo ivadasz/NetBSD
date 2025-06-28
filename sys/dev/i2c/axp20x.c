@@ -255,7 +255,7 @@ axp20x_attach(device_t parent, device_t self, void *aux)
 		aprint_error(": can't read power mode: %d\n", error);
 		return;
 	}
-	value = AXP_ADC_EN1_ACV | AXP_ADC_EN1_ACI | AXP_ADC_EN1_VBUSV | AXP_ADC_EN1_VBUSI | AXP_ADC_EN1_APSV | AXP_ADC_EN1_TS;
+	value = AXP_ADC_EN1_ACV | AXP_ADC_EN1_ACI;
 	if (sc->sc_powermode & AXP_POWER_MODE_BATTOK)
 		value |= AXP_ADC_EN1_BATTV | AXP_ADC_EN1_BATTI;
 	error = axp20x_write(sc, AXP_ADC_EN1, &value, 1);
@@ -378,11 +378,11 @@ axp20x_attach(device_t parent, device_t self, void *aux)
 	sysmon_envsys_register(sc->sc_sme);
 
 	if (axp20x_read(sc, AXP_DCDC2, &value, 1) == 0) {
-		aprint_verbose_dev(sc->sc_dev, "DCDC2 %dmV\n",
+		aprint_normal_dev(sc->sc_dev, "DCDC2 %dmV\n",
 		    (int)(700 + (value & AXP_DCDC2_VOLT_MASK) * 25));
 	}
 	if (axp20x_read(sc, AXP_DCDC3, &value, 1) == 0) {
-		aprint_verbose_dev(sc->sc_dev, "DCDC3 %dmV\n",
+		aprint_normal_dev(sc->sc_dev, "DCDC3 %dmV\n",
 		    (int)(700 + (value & AXP_DCDC3_VOLT_MASK) * 25));
 	}
 	if (axp20x_read(sc, AXP_LDO2_4, &value, 1) == 0) {
@@ -413,6 +413,11 @@ axp20x_attach(device_t parent, device_t self, void *aux)
 		}
 	}
 
+	if (axp20x_read(sc, AXP_POWEROUT_CTRL, &value, 1) == 0) {
+		aprint_normal_dev(sc->sc_dev,
+		    "Power Output Control Register: 0x%02x\n", value);
+	}
+
 	axp20x_fdt_attach(sc);
 }
 
@@ -427,6 +432,10 @@ axp20x_sensors_refresh_volt(struct axp20x_softc *sc, int reg,
 	if (error) {
 		edata->state = ENVSYS_SINVALID;
 	} else {
+#if 0
+		aprint_normal_dev(sc->sc_dev, "Voltage Read: 0x%x and 0x%x\n",
+		    buf[0], buf[1]);
+#endif
 		edata->value_cur = ((buf[0] << 4) | (buf[1] & 0xf)) *
 		    axp20x_sensors_lsb[edata->sensor];
 		edata->state = ENVSYS_SVALID;
@@ -444,6 +453,10 @@ axp20x_sensors_refresh_amp(struct axp20x_softc *sc, int reg,
 	if (error) {
 		edata->state = ENVSYS_SINVALID;
 	} else {
+#if 0
+		aprint_normal_dev(sc->sc_dev, "Current Read: 0x%x and 0x%x\n",
+		    buf[0], buf[1]);
+#endif
 		edata->value_cur = ((buf[0] << 4) | (buf[1] & 0xf)) * 
 		    axp20x_sensors_lsb[edata->sensor];
 		edata->state = ENVSYS_SVALID;
@@ -781,6 +794,25 @@ axp20xreg_attach(device_t parent, device_t self, void *aux)
 		aprint_normal(": %s (%s)\n", sc->sc_regdef->name, regulator_name);
 	else
 		aprint_normal(": %s\n", sc->sc_regdef->name);
+
+	if (regulator_name && strcmp(regulator_name, "vddcore") == 0) {
+		aprint_normal_dev(self, "Applying normal 1.2V voltage to MPU\n");
+		axp20xreg_set_voltage(self, 1200000, 1200000);
+	}
+#if 0
+	if (regulator_name && strcmp(regulator_name, "vcc-hdmi") == 0) {
+		int error;
+		u_int uvol;
+		uint8_t val;
+		error = axp20xreg_get_voltage(self, &uvol);
+		if (error !=  0) {
+			device_printf(self, "Failed to read vcc-hdmi voltage\n");
+		} else {
+			device_printf(self, "Current vcc-hdmi voltage: %uuV\n",
+			    uvol);
+		}
+	}
+#endif
 
 	fdtbus_register_regulator_controller(self, sc->sc_phandle, &axp20xreg_funcs);
 }

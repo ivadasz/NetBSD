@@ -367,6 +367,8 @@ struct wsmouse_parameters {
 #define	WSDISPLAY_TYPE_PLFB	65	/* ARM PrimeCell PL11x */
 #define	WSDISPLAY_TYPE_SSDFB	66	/* ssdfb(4) */
 #define	WSDISPLAY_TYPE_HOLLYWOOD 67	/* Nintendo Wii "Hollywood" SoC */
+#define	WSDISPLAY_TYPE_VC6	68	/* Broadcom VideoCore 6 */
+#define WSDISPLAY_TYPE_STM32	69	/* ST Micro STM32MP1 SoC*/
 
 /* Basic display information.  Not applicable to all display types. */
 struct wsdisplay_fbinfo {

@@ -316,6 +316,8 @@ struct fdt_dma_range {
 
 int		fdtbus_register_clock_controller(device_t, int,
 		    const struct fdtbus_clock_controller_func *);
+int		fdtbus_register_clock_controller_byname(device_t, int,
+		    const struct fdtbus_clock_controller_func *, const char *);
 int		fdtbus_register_dai_controller(device_t, int,
 		    const struct fdtbus_dai_controller_func *);
 int		fdtbus_register_dma_controller(device_t, int,

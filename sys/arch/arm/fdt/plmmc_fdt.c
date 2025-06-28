@@ -46,6 +46,7 @@ static void	plmmc_fdt_attach(device_t, device_t, void *);
 static const struct device_compatible_entry compat_data[] = {
 	{ .compat = "arm,pl180" },
 	{ .compat = "arm,pl181" },
+	{ .compat = "arm,pl18x" },
 	DEVICE_COMPAT_EOL
 };
 
@@ -67,6 +68,7 @@ plmmc_fdt_attach(device_t parent, device_t self, void *aux)
 	struct fdt_attach_args * const faa = aux;
 	const int phandle = faa->faa_phandle;
 	struct clk *clk;
+	struct fdtbus_reset *rst;
 	bus_addr_t addr;
 	bus_size_t size;
 	void *ih;
@@ -79,10 +81,10 @@ plmmc_fdt_attach(device_t parent, device_t self, void *aux)
 	clk = fdtbus_clock_get_index(phandle, 0);
 	if (clk == NULL) {
 		aprint_error(": couldn't get clock\n");
-		return;
+//		return;
 	}
 
-	if (clk_enable(clk) != 0) {
+	if (clk != NULL && clk_enable(clk) != 0) {
 		aprint_error(": couldn't enable clock\n");
 		return;
 	}
@@ -94,16 +96,34 @@ plmmc_fdt_attach(device_t parent, device_t self, void *aux)
 	}
 
 	sc->sc_dev = self;
-	sc->sc_clock_freq = clk_get_rate(clk);
+//	sc->sc_clock_freq = clk_get_rate(clk);
+	sc->sc_clock_freq = 64000000;
 	of_getprop_uint32(phandle, "max-frequency", &sc->sc_max_freq);
 	sc->sc_bst = faa->faa_bst;
 	if (bus_space_map(faa->faa_bst, addr, size, 0, &sc->sc_bsh)) {
 		aprint_error(": couldn't map device\n");
 		return;
 	}
+	sc->sc_dmat = faa->faa_dmat;
+
+	rst = fdtbus_reset_get_index(phandle, 0);
 
 	aprint_naive("\n");
 	aprint_normal("\n");
+
+	if (rst != NULL) {
+		device_printf(self, "Applying reset\n");
+		if (fdtbus_reset_assert(rst) != 0) {
+			aprint_error(": couldn't assert reset\n");
+			return;
+		}
+		delay(20000);
+		if (fdtbus_reset_deassert(rst) != 0) {
+			aprint_error(": couldn't de-assert reset\n");
+			return;
+		}
+		delay(20000);
+	}
 
 	ih = fdtbus_intr_establish_xname(phandle, 0, IPL_BIO, 0, plmmc_intr, sc,
 	    device_xname(self));
