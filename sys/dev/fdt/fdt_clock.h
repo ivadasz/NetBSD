@@ -38,6 +38,8 @@ struct fdtbus_clock_controller_func {
 
 int		fdtbus_register_clock_controller(device_t, int,
 		    const struct fdtbus_clock_controller_func *);
+int		fdtbus_register_clock_controller_byname(device_t, int,
+		   const struct fdtbus_clock_controller_func *, const char *);
 
 struct clk *	fdtbus_clock_get(int, const char *);
 struct clk *	fdtbus_clock_get_index(int, u_int);

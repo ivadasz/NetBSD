@@ -33,6 +33,10 @@ struct plmmc_softc {
 	device_t		sc_dev;
 	bus_space_tag_t		sc_bst;
 	bus_space_handle_t	sc_bsh;
+	bus_dma_tag_t		sc_dmat;
+	bus_dmamap_t		sc_dmamap;
+	bus_dma_segment_t	sc_dmaseg;
+	void			*sc_dmamem_va;
 	unsigned int		sc_clock_freq;
 	unsigned int		sc_max_freq;
 
@@ -44,6 +48,9 @@ struct plmmc_softc {
 	struct sdmmc_command	*sc_cmd;
 	int			sc_fifo_resid;
 	uint32_t		sc_status_mask;
+
+	bool			assume_transfer_complete;
+	u_int			last_opcode;
 };
 
 void	plmmc_init(struct plmmc_softc *);

@@ -42,6 +42,7 @@ __KERNEL_RCSID(0, "$NetBSD: fdt_clock.c,v 1.10 2019/11/09 23:28:26 jmcneill Exp 
 struct fdtbus_clock_controller {
 	device_t cc_dev;
 	int cc_phandle;
+	const char *cc_name;
 	const struct fdtbus_clock_controller_func *cc_funcs;
 
 	LIST_ENTRY(fdtbus_clock_controller) cc_next;
@@ -60,6 +61,26 @@ fdtbus_register_clock_controller(device_t dev, int phandle,
 	cc->cc_dev = dev;
 	cc->cc_phandle = phandle;
 	cc->cc_funcs = funcs;
+	cc->cc_name = NULL;
+
+	LIST_INSERT_HEAD(&fdtbus_clock_controllers, cc, cc_next);
+
+	fdtbus_clock_assign(phandle);
+
+	return 0;
+}
+
+int
+fdtbus_register_clock_controller_byname(device_t dev, int phandle,
+    const struct fdtbus_clock_controller_func *funcs, const char *name)
+{
+	struct fdtbus_clock_controller *cc;
+
+	cc = kmem_alloc(sizeof(*cc), KM_SLEEP);
+	cc->cc_dev = dev;
+	cc->cc_phandle = phandle;
+	cc->cc_funcs = funcs;
+	cc->cc_name = name;
 
 	LIST_INSERT_HEAD(&fdtbus_clock_controllers, cc, cc_next);
 
@@ -199,6 +220,12 @@ fdtbus_clock_byname(const char *clkname)
 	int err;
 
 	LIST_FOREACH(cc, &fdtbus_clock_controllers, cc_next) {
+		if (cc->cc_name != NULL) {
+			if (strcmp(clkname, cc->cc_name) == 0) {
+				return (cc->cc_funcs->decode(cc->cc_dev,
+				    cc->cc_phandle, NULL, 0));
+			}
+		}
 		err = fdtbus_get_index(cc->cc_phandle, "clock-output-names", clkname, &index);
 		if (err != 0)
 			continue;

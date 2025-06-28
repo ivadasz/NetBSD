@@ -1,0 +1,60 @@
+#	$NetBSD$
+#
+# ST Micro STMP1
+#
+
+include "arch/arm/pic/files.pic"
+include "arch/arm/cortex/files.cortex"
+
+include "arch/evbarm/conf/files.fdt"
+
+file	arch/arm/arm32/arm32_boot.c			arm32
+file	arch/arm/arm32/arm32_kvminit.c			arm32
+file	arch/arm/arm32/arm32_reboot.c			arm32
+file	arch/arm/arm32/irq_dispatch.S			arm32
+file	arch/arm/arm32/armv7_generic_space.c		arm32
+file	arch/arm/arm/bus_space_a4x.S			arm32
+file	arch/arm/arm/arm_generic_dma.c
+
+# CPU support and integrated peripherals
+file	arch/arm/stmp1/stmp1_platform.c
+
+device stmp1usbphy
+attach stmp1usbphy at fdt
+file	arch/arm/stmp1/stmp1_usbphy.c			stmp1usbphy
+
+device stmp1rcc
+attach stmp1rcc at fdt
+file	arch/arm/stmp1/stmp1_rcc.c			stmp1rcc
+
+device stmp1pwr
+attach stmp1pwr at fdt
+file	arch/arm/stmp1/stmp1_pwr.c			stmp1pwr
+
+device stmp1uart
+attach stmp1uart at fdt
+file	arch/arm/stmp1/stmp1_uart.c			stmp1uart
+
+device stmp1dts: sysmon_envsys
+attach stmp1dts at fdt
+file	arch/arm/stmp1/stmp1_dts.c			stmp1dts
+
+device stmp1iic: i2cbus
+attach stmp1iic at fdt
+file	arch/arm/stmp1/stmp1_iic.c			stmp1iic
+
+device stmp1pinctrl
+attach stmp1pinctrl at fdt
+file	arch/arm/stmp1/stmp1_pinctrl.c
+
+device stmp1pinctrlz
+attach stmp1pinctrlz at fdt
+file	arch/arm/stmp1/stmp1_pinctrlz.c
+
+device stmp1ltdc: wsemuldisplaydev
+attach stmp1ltdc at fdt
+file	arch/arm/stmp1/stmp1_ltdc.c
+
+device itehdmi: edid
+attach itehdmi at iic
+file	arch/arm/stmp1/ite_hdmi.c

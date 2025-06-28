@@ -369,6 +369,7 @@ struct wsmouse_parameters {
 #define	WSDISPLAY_TYPE_HOLLYWOOD 67	/* Nintendo Wii "Hollywood" SoC */
 #define	WSDISPLAY_TYPE_VC6	68	/* Broadcom VideoCore 6 */
 #define	WSDISPLAY_TYPE_VIOGPU	69	/* VirtIO GPU */
+#define WSDISPLAY_TYPE_STM32	70	/* ST Micro STM32MP1 SoC*/
 
 /* Basic display information.  Not applicable to all display types. */
 struct wsdisplay_fbinfo {
