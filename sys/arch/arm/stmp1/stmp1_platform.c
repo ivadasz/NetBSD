@@ -200,15 +200,15 @@ stmp1_platform_bootstrap(void)
 	//*ddrctrl |= DDRCTRL_POWERDOWN_EN;
 }
 
-static const struct fdt_platform stmp1_platform = {
-	.fp_devmap = stmp1_platform_devmap,
-	.fp_bootstrap = stmp1_platform_bootstrap,
-	.fp_init_attach_args = stmp1_platform_init_attach_args,
-	.fp_device_register = stmp1_platform_device_register,
-	.fp_reset = stmp1_platform_reset,
-	.fp_delay = gtmr_delay,
-	.fp_uart_freq = stmp1_platform_uart_freq,
-	.fp_mpstart = arm_fdt_cpu_mpstart,
+static const struct arm_platform stmp1_platform = {
+	.ap_devmap = stmp1_platform_devmap,
+	.ap_bootstrap = stmp1_platform_bootstrap,
+	.ap_init_attach_args = stmp1_platform_init_attach_args,
+	.ap_device_register = stmp1_platform_device_register,
+	.ap_reset = stmp1_platform_reset,
+	.ap_delay = gtmr_delay,
+	.ap_uart_freq = stmp1_platform_uart_freq,
+	.ap_mpstart = arm_fdt_cpu_mpstart,
 };
 
-FDT_PLATFORM(stmp1, "st,stm32mp153", &stmp1_platform);
+ARM_PLATFORM(stmp1, "st,stm32mp153", &stmp1_platform);
