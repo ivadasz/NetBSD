@@ -238,7 +238,7 @@ int
 plmmc_intr(void *priv)
 {
 	struct plmmc_softc *sc = priv;
-	uint32_t status;
+	uint32_t status = 0;
 	//uint32_t mask;
 	int retry = 10;
 	int done = 0;
