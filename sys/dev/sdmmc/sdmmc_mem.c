@@ -162,12 +162,12 @@ sdmmc_mem_enable(struct sdmmc_softc *sc)
 	/* Reset memory (*must* do that before CMD55 or CMD1). */
 	sdmmc_go_idle_state(sc);
 
-	if (ISSET(sc->sc_caps, SMC_CAPS_SPI_MODE)) {
+//	if (ISSET(sc->sc_caps, SMC_CAPS_SPI_MODE)) {
 		/* Check SD Ver.2 */
 		error = sdmmc_mem_send_if_cond(sc, 0x1aa, &card_ocr);
 		if (error == 0 && card_ocr == 0x1aa)
 			SET(ocr, MMC_OCR_HCS);
-	}
+//	}
 
 	/*
 	 * Read the SD/MMC memory OCR value by issuing CMD55 followed
@@ -835,6 +835,7 @@ sdmmc_mem_sd_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 	}
 
 	best_func = 0;
+if (0) {
 	if (sf->scr.sd_spec >= SCR_SD_SPEC_VER_1_10 &&
 	    ISSET(sf->csd.ccc, SD_CSD_CCC_SWITCH)) {
 		DPRINTF(("%s: switch func mode 0\n", SDMMCDEVNAME(sc)));
@@ -899,6 +900,8 @@ sdmmc_mem_sd_init(struct sdmmc_softc *sc, struct sdmmc_function *sf)
 			delay(25);
 		}
 	}
+}
+
 skipswitchfuncs:
 
 	/* update bus clock */
