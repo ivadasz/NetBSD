@@ -18,6 +18,7 @@ DTSMAKEVARS=	CONFIG_SOC_AM33XX=y		\
 		CONFIG_ARCH_OMAP3=y		\
 		CONFIG_ARCH_INTEL_SOCFPGA=y	\
 		CONFIG_ARCH_ROCKCHIP=y		\
+		CONFIG_ARCH_STMP1=y		\
 		CONFIG_MACH_SUN4I=y		\
 		CONFIG_MACH_SUN5I=y		\
 		CONFIG_MACH_SUN6I=y		\
@@ -38,7 +39,7 @@ DTS=		${DTSFILESCMD:sh}
 DTS+=		sun5i-r8-pocketchip.dts
 DTS+=		sun7i-a20-olinuxino-lime2-emmc-spi.dts
 DTS+=		sun8i-h2-plus-bananapi-p2-zero.dts
-DTS+=		sun8i-h3-nanopi-r1.dts
+DTS+=		sun8i-h3-nanopi-r1.dt
 .endif
 
 .include <bsd.dtb.mk>
