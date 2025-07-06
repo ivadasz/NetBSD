@@ -531,7 +531,6 @@ iic_attach(device_t parent, device_t self, void *aux)
 			if (buf)
 				free(buf, M_TEMP);
 		}
-		iic_rescan(self, "iic", NULL);
 	} else if (!no_indirect_config) {
 		/*
 		 * Attach all i2c devices described in the kernel
