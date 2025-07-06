@@ -198,7 +198,7 @@ iic* 		at i2cbus?
 axp20x* 	at iic?			# AXP209 Power Management IC
 axp20xreg* 	at axp20x?
 #seeprom* 	at iic?			# AT24Cxx Serial EEPROM
-itehdmi*	at iic1 addr 0x4d	# ITE IT66121 HDMI controller
+itehdmi*	at iic?			# ITE IT66121 HDMI controller
 
 # Display controller
 
