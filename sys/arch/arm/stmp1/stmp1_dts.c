@@ -52,6 +52,7 @@ struct stmp1dts_softc {
 	device_t		sc_dev;
 	bus_space_tag_t		sc_bst;
 	bus_space_handle_t	sc_bsh;
+	struct clk		*sc_clk;
 
 	u_int			ts1_ramp_coeff;
 	u_int			ts1_smp_time;
@@ -84,6 +85,7 @@ stmp1dts_sensor_refresh(struct sysmon_envsys *sme, envsys_data_t *edata)
 	struct stmp1dts_softc *sc = sme->sme_cookie;
 	uint32_t val;
 
+	clk_enable(sc->sc_clk);
 	val = bus_space_read_4(sc->sc_bst, sc->sc_bsh, 0);
 	bus_space_write_4(sc->sc_bst, sc->sc_bsh, 0, val | __BIT(4));
 	bus_space_write_4(sc->sc_bst, sc->sc_bsh, 0, val);
@@ -96,6 +98,7 @@ stmp1dts_sensor_refresh(struct sysmon_envsys *sme, envsys_data_t *edata)
 			break;
 	}
 	val = bus_space_read_4(sc->sc_bst, sc->sc_bsh, 0x1c) & 0xffff;
+	clk_disable(sc->sc_clk);
 	//aprint_normal_dev(sc->sc_dev, "Got mfreq=%d after %d loops\n", val, cnt);
 
 	val = stmp1dts_compute(sc, val);
@@ -139,10 +142,15 @@ stmp1dts_attach(device_t parent, device_t self, void *aux)
 		return;
 	}
 
+	sc->sc_clk = fdtbus_clock_get(phandle, "pclk");
+	if (sc->sc_clk == NULL) {
+		aprint_error(": couldn't enable Peripheral\n");
+		return;
+	}
+	clk_enable(sc->sc_clk);
+
 	aprint_naive("\n");
 	aprint_normal(": STM32MP1 Digital Temperature Sensor\n");
-
-	// TODO: We should enable the DTS clock from here, via FDT bus.
 
 	uint32_t val;
 	// Configure
@@ -165,6 +173,8 @@ stmp1dts_attach(device_t parent, device_t self, void *aux)
 		sc->ts1_t0 = 130;
 	else
 		sc->ts1_t0 = 30;
+
+	clk_disable(sc->sc_clk);
 
 	aprint_normal_dev(self, "ts1_ramp_coeff: %d, ts1_fmt0: %d\n",
 	    sc->ts1_ramp_coeff, sc->ts1_fmt0);
