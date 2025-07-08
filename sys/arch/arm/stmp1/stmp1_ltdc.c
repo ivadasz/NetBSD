@@ -206,6 +206,12 @@ stmp1ltdc_enable(struct stmp1ltdc_softc *sc, bool enable)
 {
 	int val;
 
+	if (enable) {
+		clk_enable(sc->sc_clk);
+	} else {
+		clk_disable(sc->sc_clk);
+	}
+
 	// Enable Layer 1
 	val = bus_space_read_4(sc->sc_bst, sc->sc_bsh, LTDC_L1CR);
 	val &= ~__BIT(0);
@@ -474,6 +480,11 @@ stmp1ltdc_attach(device_t parent, device_t self, void *aux)
 	}
 
 	sc->sc_clk = fdtbus_clock_get(phandle, "lcd");
+	if (sc->sc_clk == NULL) {
+		aprint_error(": couldn't enable Pixel clock\n");
+		// return;
+	}
+	clk_enable(sc->sc_clk);
 	sc->sc_rst = fdtbus_reset_get_index(phandle, 0);
 
 	/* Apply Reset */

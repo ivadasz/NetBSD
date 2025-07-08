@@ -97,6 +97,7 @@ struct stmp1iic_softc {
 	device_t		sc_dev;
 	int			sc_phandle;
 	struct fdtbus_reset	*sc_rst;
+	struct clk		*sc_clk;
 	struct i2c_controller	sc_ic;
 	bus_space_tag_t		sc_bst;
 	bus_space_handle_t	sc_bsh;
@@ -264,6 +265,8 @@ stmp1iic_op(struct stmp1iic_softc *sc, i2c_addr_t addr, bool is_write,
 	val |= __SHIFTIN(buflen, I2C_NBYTES);
 	if (restart == NULL)
 		val |= I2C_AUTOEND;
+
+	clk_enable(sc->sc_clk);
 	bus_space_write_4(sc->sc_bst, sc->sc_bsh, I2C_CR2, val);
 	val = bus_space_read_4(sc->sc_bst, sc->sc_bsh, I2C_CR2);
 	val |= I2C_START;
@@ -286,6 +289,7 @@ stmp1iic_op(struct stmp1iic_softc *sc, i2c_addr_t addr, bool is_write,
 			//	goto retry;
 		}
 	}
+	clk_disable(sc->sc_clk);
 	sc->sc_buf = NULL;
 	sc->sc_restart_buf = NULL;
 	if (sc->sc_error != 0)
@@ -384,6 +388,7 @@ stmp1iic_attach_late(device_t self)
 	fdtbus_register_i2c_controller(&sc->sc_ic, sc->sc_phandle);
 
 	fdtbus_attach_i2cbus(self, sc->sc_phandle, &sc->sc_ic, iicbus_print);
+	clk_disable(sc->sc_clk);
 }
 
 CFATTACH_DECL_NEW(stmp1iic, sizeof(struct stmp1iic_softc),
@@ -428,6 +433,13 @@ stmp1iic_attach(device_t parent, device_t self, void *aux)
 		    device_xname(self));
 		return;
 	}
+
+	sc->sc_clk = fdtbus_clock_get_index(phandle, 0);
+	if (sc->sc_clk == NULL) {
+		aprint_error(": couldn't enable Peripheral\n");
+		return;
+	}
+	clk_enable(sc->sc_clk);
 
 	char intrstr[128];
 	if (!fdtbus_intr_str(phandle, 0, intrstr, sizeof(intrstr))) {

@@ -38,6 +38,7 @@ __KERNEL_RCSID(0, "$NetBSD$");
 #include <sys/sysctl.h>
 #include <sys/kmem.h>
 #include <sys/gpio.h>
+#include <sys/malloc.h>
 
 #include <dev/clk/clk_backend.h>
 #include <dev/fdt/fdtvar.h>
@@ -78,9 +79,177 @@ __KERNEL_RCSID(0, "$NetBSD$");
 #define	RESET_WRITE(sc, reg, val)	\
 	bus_space_write_4((sc)->sc_bst, (sc)->sc_bsh, (reg), (val))
 
+struct stmp1rcc_peripheral {
+	const char *name;
+	uint16_t enable_reg;
+	uint16_t disable_reg;
+	uint16_t id;
+	uint8_t bit;
+};
+
 struct stmp1rcc_clk {
 	struct clk base;
 	u_int rate;
+};
+
+struct peripheral_clock {
+	struct clk base;
+	uint16_t enable_reg;
+	uint16_t disable_reg;
+	uint16_t bit;
+	uint16_t id;
+};
+
+static struct stmp1rcc_peripheral peripherals[] = {
+	// Name, enable_reg, disable_reg, Id, bit
+
+	// RCC APB1
+	{"TIM2EN", 0xA00, 0xA04, 0, 0},
+	{"TIM3EN", 0xA00, 0xA04, 0, 1},
+	{"TIM4EN", 0xA00, 0xA04, 0, 2},
+	{"TIM5EN", 0xA00, 0xA04, 0, 3},
+	{"TIM6EN", 0xA00, 0xA04, 0, 4},
+	{"TIM7EN", 0xA00, 0xA04, 0, 5},
+	{"TIM12EN", 0xA00, 0xA04, 0, 6},
+	{"TIM13EN", 0xA00, 0xA04, 0, 7},
+	{"TIM14EN", 0xA00, 0xA04, 0, 8},
+	{"LPTIM1EN", 0xA00, 0xA04, 0, 9},
+	{"SPI2EN", 0xA00, 0xA04, 0, 11},
+	{"SPI3EN", 0xA00, 0xA04, 0, 12},
+	{"USART2EN", 0xA00, 0xA04, 0, 14},
+	{"USART3EN", 0xA00, 0xA04, 0, 15},
+	{"UART4EN", 0xA00, 0xA04, 0, 16},
+	{"UART5EN", 0xA00, 0xA04, 0, 17},
+	{"UART7EN", 0xA00, 0xA04, 0, 18},
+	{"UART8EN", 0xA00, 0xA04, 0, 19},
+	{"I2C1EN", 0xA00, 0xA04, 0, 21},
+	{"I2C2EN", 0xA00, 0xA04, /*actually 25. 138 is for kernel clock*/138, 22},
+	{"I2C3EN", 0xA00, 0xA04, 0, 23},
+	{"I2C5EN", 0xA00, 0xA04, 0, 24},
+	{"SPDIFEN", 0xA00, 0xA04, 0, 26},
+	{"CECEN", 0xA00, 0xA04, 0, 27},
+	{"DAC12EN", 0xA00, 0xA04, 0, 29},
+	{"MDIOSEN", 0xA00, 0xA04, 0, 31},
+
+	// RCC APB2
+	{"TIM1EN", 0xA08, 0xA0C, 0, 0},
+	{"TIM8EN", 0xA08, 0xA0C, 0, 1},
+	{"TIM15EN", 0xA08, 0xA0C, 0, 2},
+	{"TIM16EN", 0xA08, 0xA0C, 0, 3},
+	{"TIM17EN", 0xA08, 0xA0C, 0, 4},
+	{"SPI1EN", 0xA08, 0xA0C, 0, 8},
+	{"SPI4EN", 0xA08, 0xA0C, 0, 9},
+	{"SPI5EN", 0xA08, 0xA0C, 0, 10},
+	{"USART6EN", 0xA08, 0xA0C, 0, 13},
+	{"SAI1EN", 0xA08, 0xA0C, 0, 16},
+	{"SAI2EN", 0xA08, 0xA0C, 0, 17},
+	{"SAI3EN", 0xA08, 0xA0C, 0, 18},
+	{"DFSDMEN", 0xA08, 0xA0C, 0, 20},
+	{"ADFSDMEN", 0xA08, 0xA0C, 0, 21},
+	{"FDCANEN", 0xA08, 0xA0C, 0, 24},
+
+	// RCC APB3
+	{"LPTIM2EN", 0xA10, 0xA14, 0, 0},
+	{"LPTIM3EN", 0xA10, 0xA14, 0, 1},
+	{"LPTIM4EN", 0xA10, 0xA14, 0, 2},
+	{"LPTIM5EN", 0xA10, 0xA14, 0, 3},
+	{"SAI4EN", 0xA10, 0xA14, 0, 8},
+	{"SYSCFGEN", 0xA10, 0xA14, 0, 11},
+	{"VREFEN", 0xA10, 0xA14, 0, 13},
+	{"DTSEN", 0xA10, 0xA14, 53, 16},
+	{"HDPEN", 0xA10, 0xA14, 0, 20},
+
+	// RCC APB4
+	{"LTDC", 0x200, 0x204, /*56*/ 167,  0}, // TODO(ivadasz): 167 should be Pixel clock.
+	{"DSIEN", 0x200, 0x204, 0, 4},
+	{"DDRPERFMEN", 0x200, 0x204, 0, 8},
+	{"IWDG2APBEN", 0x200, 0x204, 0, 15},
+	{"USBPHYEN", 0x200, 0x204, 0, 16},
+	{"STGENROEN", 0x200, 0x204, 0, 20},
+
+	// RCC APB5
+	{"SPI6EN", 0x208, 0x20C, 0, 0},
+	{"I2C4EN", 0x208, 0x20C, /*Actually 62 for peripheral. 140 is for kernel clock*/140, 2},
+	{"I2C6EN", 0x208, 0x20C, 0, 3},
+	{"USART1EN", 0x208, 0x20C, 0, 4},
+	{"RTCAPBEN", 0x208, 0x20C, 0, 8},
+	{"TZC1EN", 0x208, 0x20C, 0, 11},
+	{"TZC2EN", 0x208, 0x20C, 0, 12},
+	{"TZPCEN", 0x208, 0x20C, 0, 13},
+	{"IWDG1APBEN", 0x208, 0x20C, 0, 15},
+	{"BSECEN", 0x208, 0x20C, 0, 16},
+	{"STGENEN", 0x208, 0x20C, 0, 20},
+
+	// RCC AHB5
+	{"GPIOZEN", 0x210, 0x214, 0, 0},
+	{"CRYP1EN", 0x210, 0x214, 0, 4},
+	{"HASH1EN", 0x210, 0x214, 0, 5},
+	{"RNG1EN", 0x210, 0x214, 0, 6},
+	{"BKPSRAM", 0x210, 0x214, 0, 8},
+	{"AXIMCEN", 0x210, 0x214, 0, 16},
+
+	// RCC AHB6
+	{"MDMAEN", 0x218, 0x21C, 0, 0},
+	{"GPUEN", 0x218, 0x21C, 0, 5},
+	{"ETHCKEN", 0x218, 0x21C, 0, 7},
+	{"ETHTXEN", 0x218, 0x21C, 0, 8},
+	{"ETHRXEN", 0x218, 0x21C, 0, 9},
+	{"ETHMACEN", 0x218, 0x21C, 0, 10},
+	{"FMCEN", 0x218, 0x21C, 0, 12},
+	{"QSPIEN", 0x218, 0x21C, 0, 14},
+	{"SDMMC1EN", 0x218, 0x21C, 0, 16},
+	{"SDMMC2EN", 0x218, 0x21C, 0, 17},
+	{"CRC1EN", 0x218, 0x21C, 0, 20},
+	{"USBHEN", 0x218, 0x21C, 0, 24},
+
+	// RCC AHB2
+	{"DMA1EN", 0xA18, 0xA1C, 0, 0},
+	{"DMA2EN", 0xA18, 0xA1C, 0, 1},
+	{"DMAMUXEN", 0xA18, 0xA1C, 0, 2},
+	{"ADC12EN", 0xA18, 0xA1C, 0, 5},
+	{"USBOEN", 0xA18, 0xA1C, 0, 8},
+	{"SDMMC3EN", 0xA18, 0xA1C, 0, 16},
+
+	// RCC AHB3
+	{"DCMIEN", 0xA20, 0xA24, 0, 0},
+	{"CRYP2EN", 0xA20, 0xA24, 0, 4},
+	{"HASH2EN", 0xA20, 0xA24, 0, 5},
+	{"RNG2EN", 0xA20, 0xA24, 0, 6},
+	{"CRC2EN", 0xA20, 0xA24, 0, 7},
+	{"HSEMEN", 0xA20, 0xA24, 0, 11},
+	{"IPCCEN", 0xA20, 0xA24, 0, 12},
+
+	// RCC AHB4
+	{"GPIOAEN", 0xA28, 0xA2C, 0, 0},
+	{"GPIOBEN", 0xA28, 0xA2C, 0, 1},
+	{"GPIOCEN", 0xA28, 0xA2C, 0, 2},
+	{"GPIODEN", 0xA28, 0xA2C, 0, 3},
+	{"GPIOEEN", 0xA28, 0xA2C, 0, 4},
+	{"GPIOFEN", 0xA28, 0xA2C, 0, 5},
+	{"GPIOGEN", 0xA28, 0xA2C, 0, 6},
+	{"GPIOHEN", 0xA28, 0xA2C, 0, 7},
+	{"GPIOIEN", 0xA28, 0xA2C, 0, 8},
+	{"GPIOJEN", 0xA28, 0xA2C, 0, 9},
+	{"GPIOKEN", 0xA28, 0xA2C, 0, 10},
+
+	// RCC MLAHB
+	{"RETRAMEN", 0xA38, 0xA3C, 0, 4},
+
+	// xxx
+	{NULL, 0, 0, 0},	// END
+};
+
+static int stmp1rcc_peripheral_enable(void *, struct clk *);
+static int stmp1rcc_peripheral_disable(void *, struct clk *);
+
+static struct clk_funcs peripheral_clk_funcs = {
+	.enable = stmp1rcc_peripheral_enable,
+	.disable = stmp1rcc_peripheral_disable,
+};
+
+static struct clk_domain peripherals_domain = {
+	.name = "STM32MP157_PERIPHERALS",
+	.funcs = &peripheral_clk_funcs,
 };
 
 struct stmp1rcc_softc {
@@ -105,6 +274,34 @@ static const struct device_compatible_entry compat_data[] = {
 
 CFATTACH_DECL_NEW(stmp1rcc, sizeof(struct stmp1rcc_softc),
 	stmp1rcc_match, stmp1rcc_attach, NULL, NULL);
+
+static void
+stmp1rcc_print_peripherals_status(struct stmp1rcc_softc *sc)
+{
+	struct stmp1rcc_peripheral *p;
+	uint32_t val;
+
+	aprint_normal("RCC Peripherals Enabled:");
+	for (p = &peripherals[0]; p->name != NULL; p++) {
+		val = bus_space_read_4(sc->sc_bst, sc->sc_bsh, p->enable_reg);
+		if (val & __BIT(p->bit)) {
+			aprint_normal(" %s", p->name);
+		}
+	}
+	aprint_normal("\n");
+}
+
+static struct stmp1rcc_peripheral *
+stmp1rcc_lookup_peripheral(struct stmp1rcc_softc *sc, int id)
+{
+	struct stmp1rcc_peripheral *p;
+
+	for (p = &peripherals[0]; p->name != NULL; p++) {
+		if (p->id == id)
+			return p;
+	}
+	return NULL;
+}
 
 static void
 stmp1rcc_generic_lock(void *priv)
@@ -193,6 +390,32 @@ static const struct fdtbus_reset_controller_func stmp1rcc_fdtreset_funcs = {
 	.reset_assert = stmp1rcc_resets_assert,
 	.reset_deassert = stmp1rcc_resets_deassert,
 };
+
+static int
+stmp1rcc_peripheral_enable(void *priv, struct clk *clk)
+{
+	struct peripheral_clock *p = (void *)clk;
+	struct stmp1rcc_softc *sc = priv;
+
+	//aprint_normal("%s: Enabling %s\n", __func__, clk->name);
+	bus_space_write_4(sc->sc_bst, sc->sc_bsh, p->enable_reg, __BIT(p->bit));
+
+	return 0;
+}
+
+static int
+stmp1rcc_peripheral_disable(void *priv, struct clk *clk)
+{
+	struct peripheral_clock *p = (void *)clk;
+	struct stmp1rcc_softc *sc = priv;
+
+	//aprint_normal("%s: Disabling %s\n", __func__, clk->name);
+	bus_space_write_4(sc->sc_bst, sc->sc_bsh, p->disable_reg, __BIT(p->bit));
+	// Reading back is the recommended sequence to make sure that peripheral can be used safely.
+	bus_space_read_4(sc->sc_bst, sc->sc_bsh, p->disable_reg);
+
+	return 0;
+}
 
 static struct clk *
 stmp1rcc_clk_get(void *priv, const char *name)
@@ -294,10 +517,26 @@ static struct clk *
 stmp1rcc_mpuclk_decode(device_t dev, int cc_phandle, const void *data, size_t len)
 {
 	struct stmp1rcc_softc * const sc = device_private(dev);
+	struct stmp1rcc_peripheral *p;
 
 	if (len == 4) {
 		uint32_t val = *(const uint32_t *)data;
+		val = be32toh(val);
 		aprint_normal_dev(sc->sc_dev, "Got asked to decode clock %d\n", val);
+		p = stmp1rcc_lookup_peripheral(sc, val);
+		if (p != NULL) {
+			struct peripheral_clock *clk = malloc(sizeof(struct peripheral_clock), M_DEVBUF, M_WAITOK);
+			clk->base = (struct clk){
+				.name = p->name,
+				.domain = &peripherals_domain,
+			},
+			clk->id = p->id;
+			clk->bit = p->bit;
+			clk->enable_reg = p->enable_reg;
+			clk->disable_reg = p->disable_reg;
+			clk->base.domain->priv = sc;
+			return &clk->base;
+		}
 		return NULL;
 	}
 
@@ -309,7 +548,7 @@ stmp1rcc_mpuclk_decode(device_t dev, int cc_phandle, const void *data, size_t le
 }
 
 static const struct fdtbus_clock_controller_func stmp1rcc_mpuclk_fdt_funcs = {
-	.decode = stmp1rcc_mpuclk_decode
+	.decode = stmp1rcc_mpuclk_decode,
 };
 
 static int
@@ -410,6 +649,9 @@ stmp1rcc_attach(device_t parent, device_t self, void *aux)
 	aprint_naive("\n");
 	aprint_normal(": STM32MP1 RCC\n");
 
+	aprint_normal("RCC Peripherals Status at bootup:\n");
+	stmp1rcc_print_peripherals_status(sc);
+
 	aprint_normal("%s: RCC USB kernel clock selection register: 0x%x\n",
 	    device_xname(self), bus_space_read_4(sc->sc_bst, sc->sc_bsh, 0x91C));
 	aprint_normal("%s: RCC APB4 peripheral enable for MPU set register: 0x%x\n",
@@ -427,9 +669,6 @@ stmp1rcc_attach(device_t parent, device_t self, void *aux)
 	// Enable USB Host controller
 	bus_space_write_4(sc->sc_bst, sc->sc_bsh, 0x218, __BIT(24));
 
-	// Enable DTS Temperature Sensor clocks
-	bus_space_write_4(sc->sc_bst, sc->sc_bsh, 0xA10, __BIT(16));
-
 #if 0
 	// Enable GPIOB Peripheral Clock
 	bus_space_write_4(sc->sc_bst, sc->sc_bsh, 0xA28, __BIT(1));
@@ -446,12 +685,6 @@ stmp1rcc_attach(device_t parent, device_t self, void *aux)
 
 	// Enable I2C1
 	//bus_space_write_4(sc->sc_bst, sc->sc_bsh, 0xA00, __BIT(21));
-
-	// Enable I2C4
-	bus_space_write_4(sc->sc_bst, sc->sc_bsh, 0x208, __BIT(2));
-
-	// Enable LTDC
-	bus_space_write_4(sc->sc_bst, sc->sc_bsh, 0x200, __BIT(0));
 
 	uint32_t val, val2;
 	// hsi clock is 64MHz, hse clock is 24MHz, csi clock is 4MHz
@@ -587,4 +820,7 @@ stmp1rcc_attach(device_t parent, device_t self, void *aux)
 	clk_attach(&sc->mpuclk.base);
 
 	fdtbus_register_clock_controller_byname(self, phandle, &stmp1rcc_mpuclk_fdt_funcs, sc->mpuclk.base.name);
+
+	aprint_normal("RCC Peripherals Status after RCC Init:\n");
+	stmp1rcc_print_peripherals_status(sc);
 }
