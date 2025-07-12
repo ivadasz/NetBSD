@@ -213,7 +213,7 @@ sunxi_hdmi_attach(device_t parent, device_t self, void *aux)
 
 	sc->sc_ports.dp_ep_activate = sunxi_hdmi_ep_activate;
 	sc->sc_ports.dp_ep_enable = sunxi_hdmi_ep_enable;
-	fdt_ports_register(&sc->sc_ports, self, phandle, EP_OTHER);
+	fdt_ports_register(&sc->sc_ports, self, phandle, EP_CONNECTOR);
 
 	mutex_init(&sc->sc_pwr_lock, MUTEX_DEFAULT, IPL_NONE);
 	sunxi_hdmi_i2c_init(sc);
