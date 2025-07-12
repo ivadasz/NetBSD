@@ -37,6 +37,7 @@ __KERNEL_RCSID(0, "$NetBSD$");
 #include <sys/proc.h>
 
 #include <dev/fdt/fdtvar.h>
+#include <dev/fdt/fdt_port.h>
 #include <dev/i2c/i2cvar.h>
 #include <dev/videomode/edidvar.h>
 
@@ -46,18 +47,17 @@ __KERNEL_RCSID(0, "$NetBSD$");
 static int itehdmi_match(device_t, cfdata_t, void *);
 static void itehdmi_attach(device_t, device_t, void *);
 
-#if 0
 static const struct device_compatible_entry compat_data[] = {
 	{ .compat = "ite,it66121" },
 	DEVICE_COMPAT_EOL
 };
-#endif
 
 struct itehdmi_softc {
 	device_t	sc_dev;
 	i2c_tag_t	sc_i2c;
 	i2c_addr_t	sc_addr;
 	int		sc_phandle;
+	struct fdt_device_ports	sc_ports;
 };
 
 static int
@@ -252,165 +252,6 @@ done:
 }
 #endif
 
-#if 0
-static int
-itehdmi_patterngen(struct itehdmi_softc *sc)
-{
-	int error;
-
-#if 0
-	u_int htotal = 858;
-	u_int hdew = 720;
-	u_int hfp = 16;
-	u_int hsw = 62;
-	//u_int hbp = 60;
-	u_int vtotal = 525;
-	u_int vdew = 480;
-	u_int vfp = 9;
-	u_int vsw = 6;
-	//u_int vbp = 30;
-#else
-	u_int htotal = 1664;
-	u_int hdew = 1280;
-	u_int hfp = 56;
-	u_int hsw = 136;
-	//u_int hbp = 192;
-	u_int vtotal = 726;
-	u_int vdew = 720;
-	u_int vfp = 1;
-	u_int vsw = 3;
-	//u_int vbp = 2;
-#endif
-
-	u_int hrs = hfp;
-	u_int hre = hrs + hsw - 1;
-	u_int hdes = hrs + hsw;
-	u_int hdee = hdes + hdew - 1;
-
-	u_int vrs = vfp;
-	u_int vre = (vrs + vsw) % 16;
-	u_int vrs2nd = 0xfff;
-	u_int vre2nd = 0xfff;
-
-	u_int vdes = vrs + vsw + vfp;
-	u_int vdee = vdes + vdew;
-	u_int vdes2 = 0xfff;
-	u_int vdee2 = 0xfff;
-
-	// XXX Consider enabling VSYNC/HSYNC/DE Generation
-
-	error = itehdmi_update_reg(sc, 0x90, 0xF0, (htotal&0x0F) << 4);
-	//error = itehdmi_update_reg(sc, 0x90, 0xF0, ((htotal&0x0F) << 4) | 0x0F);
-	if (error != 0)
-		goto done;
-
-	error = itehdmi_write_reg(sc, 0x91, (htotal&0x0FF0) >> 4);
-	if (error != 0)
-		goto done;
-
-
-	error = itehdmi_write_reg(sc, 0x95, hrs & 0xFF);
-	if (error != 0)
-		goto done;
-	error = itehdmi_write_reg(sc, 0x96, hre & 0xFF);
-	if (error != 0)
-		goto done;
-	error = itehdmi_write_reg(sc, 0x97, ((hre & 0x0F00)>>4) + ((hrs & 0x0F00) >> 8));
-	if (error != 0)
-		goto done;
-
-	error = itehdmi_write_reg(sc, 0x92, hdes & 0xFF);
-	if (error != 0)
-		goto done;
-	error = itehdmi_write_reg(sc, 0x93, hdee & 0xFF);
-	if (error != 0)
-		goto done;
-	error = itehdmi_write_reg(sc, 0x94, ((hdee & 0x0F00)>>4) + ((hdes & 0x0F00) >> 8));
-	if (error != 0)
-		goto done;
-
-	error = itehdmi_write_reg(sc, 0x98, vtotal & 0xFF);
-	if (error != 0)
-		goto done;
-	error = itehdmi_write_reg(sc, 0x99, (vtotal & 0x0F00) >> 8);
-	if (error != 0)
-		goto done;
-
-	error = itehdmi_write_reg(sc, 0xa0, vrs & 0xFF);
-	if (error != 0)
-		goto done;
-	error = itehdmi_write_reg(sc, 0xa1, ((vre & 0x0F) << 4) + ((vrs & 0x0F00) >> 8));
-	if (error != 0)
-		goto done;
-	error = itehdmi_write_reg(sc, 0xa2, vrs2nd & 0xFF);
-	if (error != 0)
-		goto done;
-	error = itehdmi_write_reg(sc, 0xa6, (vre2nd & 0xF0) + ((vre & 0xF0) >> 4));
-	if (error != 0)
-		goto done;
-	error = itehdmi_write_reg(sc, 0xa3, ((vre2nd & 0x0F)<<4) + ((vrs2nd & 0xF00) >> 8));
-	if (error != 0)
-		goto done;
-
-	error = itehdmi_write_reg(sc, 0x9a, vdes & 0xFF);
-	if (error != 0)
-		goto done;
-	error = itehdmi_write_reg(sc, 0x9b, vdee & 0xFF);
-	if (error != 0)
-		goto done;
-	error = itehdmi_write_reg(sc, 0x9c, ((vdee & 0x0F00)>>4) + ((vdes&0xF00)>>8));
-	if (error != 0)
-		goto done;
-
-	error = itehdmi_write_reg(sc, 0x9D, vdes2 & 0xFF);
-	if (error != 0)
-		goto done;
-	error = itehdmi_write_reg(sc, 0x9E, vdee2 & 0xFF);
-	if (error != 0)
-		goto done;
-	error = itehdmi_write_reg(sc, 0x9F, ((vdee2 & 0x0F00)>>4) + ((vdes2&0xF00)>>8));
-	if (error != 0)
-		goto done;
-
-	error = itehdmi_update_reg(sc, 0xb1, 0x55, ((hre&0x1000)>>6)+((hrs&0x1000)>>8)+((hdee&0x1000)>>10)+((hdes&0x1000)>>12));
-	if (error != 0)
-		goto done;
-	error = itehdmi_update_reg(sc, 0xB2, 0x05, 0);
-	if (error != 0)
-		goto done;
-
-	// Enable H/V-SYNC and DE generation
-	error = itehdmi_update_reg(sc, 0x90, 0x09, 0x00);
-	if (error != 0)
-		goto done;
-
-#if 0
-	error = itehdmi_update_reg(sc, 0xA9, 0xFF, 0);
-	if (error != 0)
-		goto done;
-	error = itehdmi_update_reg(sc, 0xAF, 0xFF, 0xA0);
-	if (error != 0)
-		goto done;
-	error = itehdmi_update_reg(sc, 0xB0, 0xFF, 0);
-	if (error != 0)
-		goto done;
-
-	// Enable pattern generator
-	error = itehdmi_update_reg(sc, 0xA8, 0x01, 0x01);
-	if (error != 0)
-		goto done;
-#else
-	// Disable pattern generator
-	error = itehdmi_update_reg(sc, 0xA8, 0x01, 0x00);
-	if (error != 0)
-		goto done;
-#endif
-
-done:
-	return error;
-}
-#endif
-
 struct regtable {
 	uint8_t reg;
 	uint8_t invmask;
@@ -427,6 +268,44 @@ static struct regtable power_on_table[] = {
 	{0x62, 0x08, 0x08},
 	{0x64, 0x04, 0x04},
 	{0,0,0},
+};
+
+static struct regtable power_down_table[] = {
+	// Enable GRCLK
+	{0x0F, 0x40, 0x00},
+	// PLL Reset
+	{0x61, 0x10, 0x10},
+	{0x62, 0x08, 0x00},
+	{0x64, 0x04, 0x00},
+	{0x01, 0x00, 0x00},
+
+	// PLL PwrOn
+	{0x61, 0x20, 0x20},
+	{0x62, 0x44, 0x44},
+	{0x64, 0x40, 0x40},
+
+	// HDMITX PwrDn
+	{0x05, 0x01, 0x01},
+	{0x0F, 0x78, 0x78},
+	{0, 0, 0},
+};
+
+static struct regtable resume_table[] = {
+	{0x0F, 0x78, 0x38},
+	{0x05, 0x01, 0x00},
+
+	// PLL PwrOn
+	{0x61, 0x20, 0x00},
+	{0x62, 0x44, 0x00},
+	{0x64, 0x40, 0x00},
+
+	// PLL Reset OFF
+	{0x61, 0x10, 0x00},
+	{0x62, 0x08, 0x08},
+	{0x64, 0x04, 0x04},
+	{0x0F, 0x78, 0x08},
+	{0x0F, 0x78, 0x08},
+	{0, 0, 0},
 };
 
 static struct regtable program_video_mode_table[] = {
@@ -480,6 +359,21 @@ done:
 	return error;
 }
 
+static int
+ite_hdmi_ep_activate(device_t dev, struct fdt_endpoint *ep, bool activate)
+{
+	struct itehdmi_softc *sc = device_private(dev);
+	int error;
+
+	aprint_normal("%s: Got request to turn HDMI output %s\n", __func__, activate ? "ON" : "OFF");
+	error = loadregs(sc, activate ? resume_table : power_down_table);
+	if (error != 0) {
+		device_printf(sc->sc_dev, "Failed power %s sequence\n", activate ? "ON" : "OFF");
+	}
+
+	return error;
+}
+
 CFATTACH_DECL_NEW(itehdmi, sizeof(struct itehdmi_softc),
 	itehdmi_match, itehdmi_attach, NULL, NULL);
 
@@ -487,13 +381,13 @@ static int
 itehdmi_match(device_t parent, cfdata_t cf, void *aux)
 {
 	struct i2c_attach_args *ia = aux;
-	//int match_result;
+	int match_result;
 
 	aprint_normal("%s: got called for matching, addr=0x%x\n",
 	    __func__, ia->ia_addr);
 
-	//if (iic_use_direct_match(ia, cf, compat_data, &match_result))
-	//	return match_result;
+	if (iic_use_direct_match(ia, cf, compat_data, &match_result))
+		return match_result;
 
 	switch (ia->ia_addr) {
 	case ITEHDMI_I2C_DEFAULT_ADDR:
@@ -571,7 +465,7 @@ itehdmi_attach(device_t parent, device_t self, void *aux)
 		device_printf(sc->sc_dev, "Failed power on sequence\n");
 		return;
 	}
-	kpause("itehdmi", false, mstohz(50), NULL);
+	//kpause("itehdmi", false, mstohz(50), NULL);
 #if 0
 	error = itehdmi_patterngen(sc);
 	if (error != 0) {
@@ -587,4 +481,8 @@ itehdmi_attach(device_t parent, device_t self, void *aux)
 	}
 
 	device_printf(sc->sc_dev, "Finished programming IT66121\n");
+
+	// TODO(ivadasz): Move initialization to enabling the in-endpoint.
+	sc->sc_ports.dp_ep_activate = ite_hdmi_ep_activate;
+	fdt_ports_register(&sc->sc_ports, self, sc->sc_phandle, EP_CONNECTOR);
 }

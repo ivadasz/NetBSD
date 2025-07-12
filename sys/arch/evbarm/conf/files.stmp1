@@ -51,10 +51,10 @@ device stmp1pinctrlz
 attach stmp1pinctrlz at fdt
 file	arch/arm/stmp1/stmp1_pinctrlz.c
 
-device stmp1ltdc: wsemuldisplaydev
+device stmp1ltdc: fdt_port, wsemuldisplaydev
 attach stmp1ltdc at fdt
 file	arch/arm/stmp1/stmp1_ltdc.c
 
-device itehdmi: edid
+device itehdmi: edid, fdt_port
 attach itehdmi at iic
 file	arch/arm/stmp1/ite_hdmi.c

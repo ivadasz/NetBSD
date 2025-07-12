@@ -40,6 +40,7 @@ __KERNEL_RCSID(0, "$NetBSD$");
 #include <sys/time.h>
 
 #include <dev/fdt/fdtvar.h>
+#include <dev/fdt/fdt_port.h>
 
 #if defined(DDB)
 #include <machine/db_machdep.h>
@@ -101,6 +102,8 @@ struct stmp1ltdc_softc {
 
 	struct clk		*sc_clk;
 	struct fdtbus_reset	*sc_rst;
+	struct fdt_device_ports	sc_ports;
+	struct fdt_endpoint	*sc_out_ep;
 
 	bus_size_t		fb_buf_size;
 	int			fb_nsegs;
@@ -202,6 +205,15 @@ stm_genfb_ddb_trap_callback(int where)
 #endif
 
 static void
+stmp1ltdc_hdmi_ep_connect(device_t dev, struct fdt_endpoint *ep, bool connect)
+{
+	struct stmp1ltdc_softc *sc = device_private(dev);
+
+	sc->sc_out_ep = ep;
+	// TODO(ivadasz): Schedule a task to actually activate the HDMI connector state.
+}
+
+static void
 stmp1ltdc_enable(struct stmp1ltdc_softc *sc, bool enable)
 {
 	int val;
@@ -235,6 +247,11 @@ stmp1ltdc_enable(struct stmp1ltdc_softc *sc, bool enable)
 	if (enable)
 		val |= __BIT(0);
 	bus_space_write_4(sc->sc_bst, sc->sc_bsh, LTDC_GCR, val);
+
+	if (sc->sc_out_ep) {
+		aprint_normal("%s: Updating HDMI chip state to %s\n", __func__, enable ? "ON" : "OFF");
+		fdt_endpoint_activate(sc->sc_out_ep, enable);
+	}
 }
 
 static void
@@ -452,6 +469,8 @@ stmp1ltdc_attach(device_t parent, device_t self, void *aux)
 	sc->sc_bst = faa->faa_bst;
 	sc->sc_dmat = faa->faa_dmat;
 
+	sc->sc_out_ep = NULL;
+
 	mutex_init(&sc->sc_lock, MUTEX_DEFAULT, IPL_NET);
 
 	if (fdtbus_get_reg(phandle, 0, &addr, &size) != 0) {
@@ -595,4 +614,9 @@ stmp1ltdc_attach(device_t parent, device_t self, void *aux)
 		db_trap_callback = stm_genfb_ddb_trap_callback;
 	}
 #endif
+
+	// TODO(ivadasz): Move genfb attaching to enabling the out-endpoint.
+	//	Unless the video mode is explicitly configured via the device-tree.
+	sc->sc_ports.dp_ep_connect = stmp1ltdc_hdmi_ep_connect;
+	fdt_ports_register(&sc->sc_ports, self, phandle, EP_CONNECTOR);
 }
