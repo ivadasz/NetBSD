@@ -487,6 +487,7 @@ urtwn_attach(device_t parent, device_t self, void *aux)
 	    IEEE80211_C_MONITOR |	/* Monitor mode supported. */
 	    IEEE80211_C_IBSS |		/* IBSS mode supported */
 	    IEEE80211_C_HOSTAP |	/* HostAp mode supported */
+	    IEEE80211_C_PMGT |		/* Powersave mode supported */
 	    IEEE80211_C_SHPREAMBLE |	/* Short preamble supported. */
 	    IEEE80211_C_SHSLOT |	/* Short slot time supported. */
 	    IEEE80211_C_WME |		/* 802.11e */
@@ -1937,6 +1938,34 @@ urtwn_newstate(struct ieee80211com *ic, enum ieee80211_state nstate, int arg)
 }
 
 static void
+urtwn_set_pslevel(struct urtwn_softc *sc, int level)
+{
+	int error;
+
+	struct r92e_fw_cmd_setpwrmode cmd;
+
+	aprint_normal("%s: Setting powersave level: %d\n", __func__, level);
+	if (level > 0) {
+		cmd.mode = FWMODE_LOW_POWER;
+		cmd.smartps = SRTPS_LOW_POWER;
+		cmd.awake_int = 1;
+		cmd.all_queue_apsd = 0;
+		cmd.pwr_state = PS_RFOFF;
+	} else {
+		cmd.mode = FWMODE_ACTIVE,
+		cmd.smartps = SRTPS_POLL;
+		cmd.awake_int = 1;
+		cmd.all_queue_apsd = 0;
+		cmd.pwr_state = PS_ALLON;
+	}
+
+	error = urtwn_fw_cmd(sc, R92E_CMD_SET_PWRMODE, &cmd, sizeof(cmd));
+	if (error != 0) {
+		aprint_error("%s: Failed to set powersave level %d: %d\n", __func__, level, error);
+	}
+}
+
+static void
 urtwn_newstate_cb(struct urtwn_softc *sc, void *arg)
 {
 	struct urtwn_cmd_newstate *cmd = arg;
@@ -2025,10 +2054,19 @@ urtwn_newstate_cb(struct urtwn_softc *sc, void *arg)
 	case IEEE80211_S_INIT:
 		/* Turn link LED off. */
 		urtwn_set_led(sc, URTWN_LED_LINK, 0);
+
+		/* Leave LPS mode when requested */
+		if (sc->sc_ic.ic_flags & IEEE80211_F_PMGTON) {
+			urtwn_set_pslevel(sc, 0);
+		}
 		break;
 
 	case IEEE80211_S_SCAN:
 		if (ostate != IEEE80211_S_SCAN) {
+			/* Leave LPS mode when requested */
+			if (sc->sc_ic.ic_flags & IEEE80211_F_PMGTON) {
+				urtwn_set_pslevel(sc, 0);
+			}
 			/*
 			 * Begin of scanning
 			 */
@@ -2221,6 +2259,11 @@ urtwn_newstate_cb(struct urtwn_softc *sc, void *arg)
 		/* Start periodic calibration. */
 		if (!sc->sc_dying)
 			callout_schedule(&sc->sc_calib_to, hz);
+
+		/* Enable LPS mode if enabled */
+		if (sc->sc_ic.ic_flags & IEEE80211_F_PMGTON) {
+			urtwn_set_pslevel(sc, 1);
+		}
 		break;
 	}
 
