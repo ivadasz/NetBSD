@@ -331,7 +331,12 @@ acpitz_get_status(void *opaque)
 		if (sc->sc_zone.ac[i] == ATZ_TMP_INVALID)
 			continue;
 
-		if (sc->sc_zone.ac[i] <= tmp)
+		// The ACPI Spec explicitly says for the _ALx devices:
+		// "a list of Active cooling devices to be turned on when the"
+		// "corresponding _ACx temperature threshold is exceeded."
+		// Hence we should check for the temperature to be greater, and
+		// not greater-or-equal.
+		if (sc->sc_zone.ac[i] < tmp)
 			active = i;
 	}
 
