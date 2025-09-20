@@ -221,7 +221,7 @@ pckbc_acpi_intr_establish(struct pckbc_softc *sc, pckbc_slot_t slot)
 {
 	struct pckbc_acpi_softc *psc = NULL; /* XXX: gcc */
 	void *rv = NULL;
-	ACPI_HANDLE handle;
+	ACPI_HANDLE handle = NULL;
 	char intr_name[64];
 	int i;
 
