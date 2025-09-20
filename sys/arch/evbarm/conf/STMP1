@@ -5,6 +5,8 @@
 
 include "arch/evbarm/conf/std.stmp1"
 
+makeoptions	COPTS="-Os"
+
 #options	BOOT_ARGS="\"verbose\""
 
 #options 	INCLUDE_CONFIG_FILE	# embed config file in kernel binary
