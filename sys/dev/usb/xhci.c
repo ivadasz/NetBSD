@@ -1435,7 +1435,7 @@ xhci_init(struct xhci_softc *sc)
 		    "xHCI version %x.%x not known to be supported\n",
 		    (hciversion >> 8) & 0xff, (hciversion >> 0) & 0xff);
 	} else {
-		aprint_verbose_dev(sc->sc_dev, "xHCI version %x.%x\n",
+		aprint_normal_dev(sc->sc_dev, "xHCI version %x.%x\n",
 		    (hciversion >> 8) & 0xff, (hciversion >> 0) & 0xff);
 	}
 
@@ -1451,7 +1451,7 @@ xhci_init(struct xhci_softc *sc)
 	sc->sc_maxports = XHCI_HCS1_MAXPORTS(hcs1);
 	hcs2 = xhci_cap_read_4(sc, XHCI_HCSPARAMS2);
 	hcs3 = xhci_cap_read_4(sc, XHCI_HCSPARAMS3);
-	aprint_debug_dev(sc->sc_dev,
+	aprint_normal_dev(sc->sc_dev,
 	    "hcs1=%"PRIx32" hcs2=%"PRIx32" hcs3=%"PRIx32"\n", hcs1, hcs2, hcs3);
 
 	sc->sc_hcc = xhci_cap_read_4(sc, XHCI_HCCPARAMS);
@@ -1462,13 +1462,13 @@ xhci_init(struct xhci_softc *sc)
 		snprintb(sbuf, sizeof(sbuf), XHCI_HCCPREV1_BITS, sc->sc_hcc);
 	else
 		snprintb(sbuf, sizeof(sbuf), XHCI_HCCV1_x_BITS, sc->sc_hcc);
-	aprint_debug_dev(sc->sc_dev, "hcc=%s\n", sbuf);
-	aprint_debug_dev(sc->sc_dev, "xECP %" __PRIxBITS "\n",
+	aprint_normal_dev(sc->sc_dev, "hcc=%s\n", sbuf);
+	aprint_normal_dev(sc->sc_dev, "xECP %" __PRIxBITS "\n",
 	    XHCI_HCC_XECP(sc->sc_hcc) * 4);
 	if (hciversion >= XHCI_HCIVERSION_1_1) {
 		sc->sc_hcc2 = xhci_cap_read_4(sc, XHCI_HCCPARAMS2);
 		snprintb(sbuf, sizeof(sbuf), XHCI_HCC2_BITS, sc->sc_hcc2);
-		aprint_debug_dev(sc->sc_dev, "hcc2=%s\n", sbuf);
+		aprint_normal_dev(sc->sc_dev, "hcc2=%s\n", sbuf);
 	}
 
 	/* default all ports to bus 0, i.e. usb 3 */
@@ -1519,21 +1519,21 @@ xhci_init(struct xhci_softc *sc)
 		sc->sc_vendor_init(sc);
 
 	pagesize = xhci_op_read_4(sc, XHCI_PAGESIZE);
-	aprint_debug_dev(sc->sc_dev, "PAGESIZE 0x%08x\n", pagesize);
+	aprint_normal_dev(sc->sc_dev, "PAGESIZE 0x%08x\n", pagesize);
 	pagesize = ffs(pagesize);
 	if (pagesize == 0) {
 		aprint_error_dev(sc->sc_dev, "pagesize is 0\n");
 		return EIO;
 	}
 	sc->sc_pgsz = 1 << (12 + (pagesize - 1));
-	aprint_debug_dev(sc->sc_dev, "sc_pgsz 0x%08x\n", (uint32_t)sc->sc_pgsz);
-	aprint_debug_dev(sc->sc_dev, "sc_maxslots 0x%08x\n",
+	aprint_normal_dev(sc->sc_dev, "sc_pgsz 0x%08x\n", (uint32_t)sc->sc_pgsz);
+	aprint_normal_dev(sc->sc_dev, "sc_maxslots 0x%08x\n",
 	    (uint32_t)sc->sc_maxslots);
-	aprint_debug_dev(sc->sc_dev, "sc_maxports %d\n", sc->sc_maxports);
+	aprint_normal_dev(sc->sc_dev, "sc_maxports %d\n", sc->sc_maxports);
 
 	int err;
 	sc->sc_maxspbuf = XHCI_HCS2_MAXSPBUF(hcs2);
-	aprint_debug_dev(sc->sc_dev, "sc_maxspbuf %d\n", sc->sc_maxspbuf);
+	aprint_normal_dev(sc->sc_dev, "sc_maxspbuf %d\n", sc->sc_maxspbuf);
 	if (sc->sc_maxspbuf != 0) {
 		err = usb_allocmem(sc->sc_bus.ub_dmatag,
 		    sizeof(uint64_t) * sc->sc_maxspbuf, sizeof(uint64_t),
@@ -1621,7 +1621,7 @@ xhci_init(struct xhci_softc *sc)
 		goto bad3;
 	}
 
-	aprint_debug_dev(sc->sc_dev, "eventst: 0x%016jx %p %zx\n",
+	aprint_normal_dev(sc->sc_dev, "eventst: 0x%016jx %p %zx\n",
 	    (uintmax_t)DMAADDR(&sc->sc_eventst_dma, 0),
 	    KERNADDR(&sc->sc_eventst_dma, 0),
 	    sc->sc_eventst_dma.udma_block->size);
@@ -1637,7 +1637,7 @@ xhci_init(struct xhci_softc *sc)
 		rv = ENOMEM;
 		goto bad4;
 	}
-	aprint_debug_dev(sc->sc_dev, "dcbaa: 0x%016jx %p %zx\n",
+	aprint_normal_dev(sc->sc_dev, "dcbaa: 0x%016jx %p %zx\n",
 	    (uintmax_t)DMAADDR(&sc->sc_dcbaa_dma, 0),
 	    KERNADDR(&sc->sc_dcbaa_dma, 0),
 	    sc->sc_dcbaa_dma.udma_block->size);
@@ -4318,6 +4318,7 @@ xhci_roothub_ctrl_locked(struct usbd_bus *bus, usb_device_request_t *req,
 			v |= XHCI_PM3_U2TO_SET(optval);
 			xhci_op_write_4(sc, port, v);
 			break;
+		// TODO: Add autosuspend feature, and enable from uhub driver.
 		default:
 			return -1;
 		}
