@@ -254,7 +254,7 @@ void
 ahci_attach(struct ahci_softc *sc)
 {
 	uint32_t ahci_rev;
-	int i, j, port;
+	int i, j, n, port;
 	struct ahci_channel *achp;
 	struct ata_channel *chp;
 	int error;
@@ -285,6 +285,7 @@ ahci_attach(struct ahci_softc *sc)
 		return;
 
 	sc->sc_ahci_cap = AHCI_READ(sc, AHCI_CAP);
+	sc->sc_ahci_cap2 = AHCI_READ(sc, AHCI_CAP2);
 	if (sc->sc_ahci_quirks & AHCI_QUIRK_BADPMP) {
 		aprint_verbose_dev(sc->sc_atac.atac_dev,
 		    "ignoring broken port multiplier support\n");
@@ -298,7 +299,7 @@ ahci_attach(struct ahci_softc *sc)
 	sc->sc_atac.atac_nchannels = (sc->sc_ahci_cap & AHCI_CAP_NPMASK) + 1;
 	sc->sc_ncmds = ((sc->sc_ahci_cap & AHCI_CAP_NCS) >> 8) + 1;
 	ahci_rev = AHCI_READ(sc, AHCI_VS);
-	snprintb(buf, sizeof(buf), "\177\020"
+	n = snprintb(buf, sizeof(buf), "\177\020"
 			/* "f\000\005NP\0" */
 			"b\005SXS\0"
 			"b\006EMS\0"
@@ -322,8 +323,16 @@ ahci_attach(struct ahci_softc *sc)
 			"b\034SMPS\0"
 			"b\035SSNTF\0"
 			"b\036SNCQ\0"
-			"b\037S64A\0"
-			"\0", sc->sc_ahci_cap);
+			"b\037S64A\0",
+			sc->sc_ahci_cap);
+	snprintb(&buf[n], sizeof(buf) - n,
+			"b\000BOH\0"
+			"b\001NVMP\0"
+			"b\002APST\0"
+			"b\003SDS\0"
+			"b\004SADM\0"
+			"b\005DESO\0"
+			"\0", sc->sc_ahci_cap2);
 	aprint_normal_dev(sc->sc_atac.atac_dev, "AHCI revision %u.%u"
 	    ", %d port%s, %d slot%s, CAP %s\n",
 	    AHCI_VS_MJR(ahci_rev), AHCI_VS_MNR(ahci_rev),
@@ -385,8 +394,8 @@ ahci_attach(struct ahci_softc *sc)
 
 	if (sc->sc_ahci_ports == 0) {
 		sc->sc_ahci_ports = AHCI_READ(sc, AHCI_PI);
-		AHCIDEBUG_PRINT(("active ports %#x\n", sc->sc_ahci_ports),
-		    DEBUG_PROBE);
+		aprint_normal_dev(sc->sc_atac.atac_dev,
+		    "active ports %#x\n", sc->sc_ahci_ports);
 	}
 	for (i = 0, port = 0; i < AHCI_MAX_PORTS; i++) {
 		if ((sc->sc_ahci_ports & (1U << i)) == 0)

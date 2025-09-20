@@ -61,6 +61,7 @@ struct ahci_softc {
 #define AHCI_QUIRK_BADNCQ	__BIT(3)  /* possibly broken NCQ support, ignore */
 
 	uint32_t sc_ahci_cap;	/* copy of AHCI_CAP */
+	uint32_t sc_ahci_cap2;	/* copy of AHCI_CAP2 */
 	int sc_ncmds; /* number of command slots */
 	uint32_t sc_ahci_ports;
 	struct ata_channel *sc_chanarray[AHCI_MAX_PORTS];

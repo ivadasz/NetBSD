@@ -177,7 +177,10 @@ struct ahci_r_fis {
 #define		AHCI_EMC_MR	0x00000001 /* Message received */
 
 #define AHCI_CAP2	0x24 /* HBA Capabilities Extended */
-#define		AHCI_CAP2_APST	0x00000004
+#define		AHCI_CAP2_DESO	0x00000020 /* DEVSLP only from Slumber */
+#define		AHCI_CAP2_SADM	0x00000010 /* Aggressive DEVSLP */
+#define		AHCI_CAP2_SDS	0x00000008 /* DEVSLP */
+#define		AHCI_CAP2_APST	0x00000004 /* Automatic Partial to Slumber */
 #define		AHCI_CAP2_NVMP	0x00000002
 #define		AHCI_CAP2_BOH	0x00000001
 
@@ -263,8 +266,20 @@ struct ahci_r_fis {
 #define		AHCI_P_SIG_SC_SHIFT	0
 
 #define AHCI_P_SSTS(p)	(0x128 + AHCI_P_OFFSET(p)) /* Serial ATA status */
+#define		AHCI_P_SSTS_IPM_MASK	0x00000f00
+#define		AHCI_P_SSTS_IPM_SHIFT	8
+#define		AHCI_P_SSTS_SPD_MASK	0x000000f0
+#define		AHCI_P_SSTS_SPD_SHIFT	4
+#define		AHCI_P_SSTS_DET_MASK	0x0000000f
+#define		AHCI_P_SSTS_DET_SHIFT	0
 
 #define AHCI_P_SCTL(p)	(0x12c + AHCI_P_OFFSET(p)) /* Serial ATA control */
+#define		AHCI_P_SCTL_IPM_MASK	0x00000f00
+#define		AHCI_P_SCTL_IPM_SHIFT	8
+#define		AHCI_P_SCTL_SPD_MASK	0x000000f0
+#define		AHCI_P_SCTL_SPD_SHIFT	4
+#define		AHCI_P_SCTL_DET_MASK	0x0000000f
+#define		AHCI_P_SCTL_DET_SHIFT	0
 
 #define AHCI_P_SERR(p)	(0x130 + AHCI_P_OFFSET(p)) /* Serial ATA error */
 
