@@ -65,6 +65,7 @@ __KERNEL_RCSID(0, "$NetBSD$");
 
 //#include <evbarm/fdt/machdep.h>
 #include <evbarm/fdt/platform.h>
+#include <dev/fdt/fdt_platform.h>
 
 #define STMP1_L4_APB1_VBASE	KERNEL_IO_VBASE
 #define STMP1_L4_APB1_PBASE	0x40000000

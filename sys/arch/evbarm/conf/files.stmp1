@@ -23,7 +23,7 @@ device stmp1usbphy
 attach stmp1usbphy at fdt
 file	arch/arm/stmp1/stmp1_usbphy.c			stmp1usbphy
 
-device stmp1rcc
+device stmp1rcc: fdt_syscon
 attach stmp1rcc at fdt
 file	arch/arm/stmp1/stmp1_rcc.c			stmp1rcc
 
@@ -39,7 +39,7 @@ device stmp1dts: sysmon_envsys
 attach stmp1dts at fdt
 file	arch/arm/stmp1/stmp1_dts.c			stmp1dts
 
-device stmp1iic: i2cbus
+device stmp1iic: i2cbus, fdt_i2c
 attach stmp1iic at fdt
 file	arch/arm/stmp1/stmp1_iic.c			stmp1iic
 

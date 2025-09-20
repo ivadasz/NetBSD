@@ -44,6 +44,7 @@ __KERNEL_RCSID(0, "$NetBSD$");
 #include <dev/cons.h>
 
 #include <dev/fdt/fdtvar.h>
+#include <dev/fdt/fdt_console.h>
 
 static int stmp1uart_match(device_t, cfdata_t, void *);
 static void stmp1uart_attach(device_t, device_t, void *);

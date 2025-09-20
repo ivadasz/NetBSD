@@ -385,9 +385,8 @@ stmp1iic_attach_late(device_t self)
 	struct stmp1iic_softc * const sc = device_private(self);
 
 	// Register i2cbus
-	fdtbus_register_i2c_controller(&sc->sc_ic, sc->sc_phandle);
+	iicbus_attach(self, &sc->sc_ic);
 
-	fdtbus_attach_i2cbus(self, sc->sc_phandle, &sc->sc_ic, iicbus_print);
 	clk_disable(sc->sc_clk);
 }
 
