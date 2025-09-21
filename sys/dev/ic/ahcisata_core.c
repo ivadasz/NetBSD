@@ -36,6 +36,7 @@ __KERNEL_RCSID(0, "$NetBSD: ahcisata_core.c,v 1.108 2023/09/10 14:04:28 abs Exp 
 #include <sys/disklabel.h>
 #include <sys/proc.h>
 #include <sys/buf.h>
+#include <sys/sysctl.h>
 
 #include <dev/ata/atareg.h>
 #include <dev/ata/satavar.h>
@@ -87,6 +88,8 @@ static void ahci_channel_start(struct ahci_softc *, struct ata_channel *,
 static void ahci_channel_recover(struct ata_channel *, int, uint32_t);
 static int  ahci_dma_setup(struct ata_channel *, int, void *, size_t, int);
 static int  ahci_intr_port_common(struct ata_channel *);
+static int  ahci_port_status_sysctl_handle(SYSCTLFN_ARGS);
+static void ahci_port_status_sysctl_setup(device_t, struct ata_channel *);
 
 #if NATAPIBUS > 0
 static void ahci_atapibus_attach(struct atabus_softc *);
@@ -517,6 +520,7 @@ ahci_attach(struct ahci_softc *sc)
 			break;
 		}
 		ata_channel_attach(chp);
+		ahci_port_status_sysctl_setup(sc->sc_atac.atac_dev, chp);
 		port++;
 end:
 		continue;
@@ -1801,6 +1805,84 @@ ahci_dma_setup(struct ata_channel *chp, int slot, void *data,
 end:
 	AHCI_CMDTBL_SYNC(sc, achp, slot, BUS_DMASYNC_PREWRITE);
 	return 0;
+}
+
+static int
+ahci_port_status_sysctl_handle(SYSCTLFN_ARGS)
+{
+	struct sysctlnode node = *rnode;
+	struct ata_channel *chp = node.sysctl_data;
+	struct ahci_softc *sc = (struct ahci_softc *)chp->ch_atac;
+	uint32_t val, ipm, det;
+	int err;
+	const char *str;
+	char buf[24];
+	static const char *ipm_state[] = {
+		NULL, "active", "partial", NULL, NULL, NULL,
+		"slumber", NULL, "devsleep",
+	};
+	static const char *det_state[] = {
+		"no device", "no communication", NULL, "established",
+		"phy offline",
+	};
+
+	val = AHCI_READ(sc, AHCI_P_SSTS(chp->ch_channel)),
+	ipm = __SHIFTOUT(val, AHCI_P_SSTS_IPM_MASK);
+	det = __SHIFTOUT(val, AHCI_P_SSTS_DET_MASK);
+	if (det > 4)
+		det = 0;
+	if (det == 3) {
+		if (ipm > 8)
+			ipm = 0;
+		str = ipm_state[ipm];
+	} else {
+		str = det_state[det];
+	}
+	if (str == NULL)
+		str = "unknown";
+
+	strlcpy(buf, str, sizeof(buf));
+	node.sysctl_data = buf;
+	err = sysctl_lookup(SYSCTLFN_CALL(&node));
+	if (err || newp == NULL)
+		return err;
+
+	return 0;
+}
+
+static void
+ahci_port_status_sysctl_setup(device_t dev, struct ata_channel *chp)
+{
+	const struct sysctlnode *ahci_node, *port_node;
+	const char *devname = device_xname(dev);
+	char port[SYSCTL_NAMELEN];
+
+	snprintf(port, SYSCTL_NAMELEN, "port%d", chp->ch_channel);
+	if (sysctl_createv(NULL, 0, NULL, &ahci_node, 0, CTLTYPE_NODE, devname,
+	    NULL, NULL, 0, NULL, 0, CTL_HW, CTL_CREATE, CTL_EOL) != 0) {
+		aprint_error("%s: Failed at first sysctl_createv\n", __func__);
+		goto fail;
+	}
+	if (sysctl_createv(NULL, 0, NULL, &port_node, 0, CTLTYPE_NODE, port,
+	    NULL, NULL, 0, NULL, 0, CTL_HW, ahci_node->sysctl_num,
+	    CTL_CREATE, CTL_EOL) != 0) {
+		aprint_error("%s: Failed at second sysctl_createv\n", __func__);
+		goto fail;
+	}
+	if (sysctl_createv(NULL, 0, NULL, NULL, CTLFLAG_READONLY,
+	    CTLTYPE_STRING, "status",
+	    SYSCTL_DESCR("Port Status"),
+	    ahci_port_status_sysctl_handle,
+	    0, (void *)chp, 0,
+	    CTL_HW, ahci_node->sysctl_num, port_node->sysctl_num,
+	    CTL_CREATE, CTL_EOL) != 0) {
+		aprint_error("%s: Failed at third sysctl_createv\n", __func__);
+		goto fail;
+	}
+	return;
+
+fail:
+	aprint_error("%s: Couldn't add sysctl nodes\n", __func__);
 }
 
 #if NATAPIBUS > 0
