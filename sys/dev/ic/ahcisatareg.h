@@ -220,6 +220,7 @@ struct ahci_r_fis {
 
 #define AHCI_P_CMD(p)	(0x118 + AHCI_P_OFFSET(p)) /* Port command/status */
 #define		AHCI_P_CMD_ICC_MASK 0xf0000000 /* Interface Comm. Control */
+#define		AHCI_P_CMD_ICC_DS   0x80000000 /* State devsleep */
 #define		AHCI_P_CMD_ICC_SL   0x60000000 /* State slumber */
 #define		AHCI_P_CMD_ICC_PA   0x20000000 /* State partial */
 #define		AHCI_P_CMD_ICC_AC   0x10000000 /* State active */
@@ -302,3 +303,15 @@ struct ahci_r_fis {
 #define		AHCI_P_FBS_ADO_SHIFT	12
 #define		AHCI_P_FBS_DWE		0x000f0000 /* Device With Error */
 #define		AHCI_P_FBS_DWE_SHIFT	16
+
+#define AHCI_P_DEVSLP(p)	(0x144 + AHCI_P_OFFSET(p)) /* Port task file data */
+#define		AHCI_P_DEVSLP_ADSE	0x00000001 /* Aggressive DevSleep */
+#define		AHCI_P_DEVSLP_DSP	0x00000002 /* DevSleep present */
+#define		AHCI_P_DEVSLP_DETO	0x000003fc /* DevSleep Exit Timeout */
+#define		AHCI_P_DEVSLP_DETO_SHIFT 2
+#define		AHCI_P_DEVSLP_MDAT	0x00007c00 /* Minimum Assertion Time */
+#define		AHCI_P_DEVSLP_MDAT_SHIFT 10
+#define		AHCI_P_DEVSLP_DITO	0x01ff8000 /* DevSleep Idle Timeout */
+#define		AHCI_P_DEVSLP_DITO_SHIFT 15
+#define		AHCI_P_DEVSLP_DM	0x1e000000 /* DITO Multiplier */
+#define		AHCI_P_DEVSLP_DM_SHIFT	25
