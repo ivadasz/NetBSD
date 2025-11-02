@@ -1762,6 +1762,15 @@ sdhc_start_command(struct sdhc_host *hp, struct sdmmc_command *cmd)
 		mode |= SDHC_DMA_ENABLE;
 	}
 
+	// Apply Quirk where some controllers only support ADMA2 for block-sized
+	// transfers.
+	if (ISSET(sc->sc_flags, SDHC_FLAG_ADMA2_ONLY_BLOCKS) &&
+	    cmd->c_dmamap != NULL &&
+	    (cmd->c_datalen % SDMMC_SECTOR_SIZE) != 0) {
+		cmd->c_dmamap = NULL;
+		CLR(mode, SDHC_DMA_ENABLE);
+	}
+
 	/*
 	 * Prepare command register value. (2.2.6)
 	 */
@@ -1808,7 +1817,7 @@ sdhc_start_command(struct sdhc_host *hp, struct sdmmc_command *cmd)
 	}
 
 	/* Set DMA start address. */
-	if (ISSET(hp->flags, SHF_USE_ADMA2_MASK) && cmd->c_data != NULL) {
+	if (ISSET(hp->flags, SHF_USE_ADMA2_MASK) && cmd->c_dmamap != NULL) {
 		for (int seg = 0; seg < cmd->c_dmamap->dm_nsegs; seg++) {
 			bus_addr_t paddr =
 			    cmd->c_dmamap->dm_segs[seg].ds_addr;
@@ -1860,7 +1869,7 @@ sdhc_start_command(struct sdhc_host *hp, struct sdmmc_command *cmd)
 			HCLR1(hp, SDHC_HOST_CTL, SDHC_DMA_SELECT);
 			HSET1(hp, SDHC_HOST_CTL, SDHC_DMA_SELECT_ADMA2);
 		}
-	} else if (ISSET(mode, SDHC_DMA_ENABLE) &&
+	} else if (cmd->c_dmamap != NULL &&
 	    !ISSET(sc->sc_flags, SDHC_FLAG_EXTERNAL_DMA)) {
 		if (ISSET(hp->sc->sc_flags, SDHC_FLAG_USDHC)) {
 			HCLR4(hp, SDHC_HOST_CTL, SDHC_USDHC_DMA_SELECT);

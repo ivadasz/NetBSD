@@ -89,6 +89,7 @@ static const struct sdhc_pci_quirk {
 #define	SDHC_PCI_QUIRK_INTEL_EMMC_HW_RESET	__BIT(5)
 #define	SDHC_PCI_QUIRK_SINGLE_POWER_WRITE	__BIT(6)
 #define	SDHC_PCI_QUIRK_BROKEN_ADMA		__BIT(7)
+#define	SDHC_PCI_QUIRK_ADMA2_ONLY_BLOCKS	__BIT(8)
 } sdhc_pci_quirk_table[] = {
 	{
 		PCI_VENDOR_TI,
@@ -264,6 +265,22 @@ static const struct sdhc_pci_quirk {
 		SDHC_PCI_QUIRK_INTEL_EMMC_HW_RESET |
 		SDHC_PCI_QUIRK_NO_PWR0
 	},
+	{
+		PCI_VENDOR_O2MICRO,
+		0x8520,
+		0xffff,
+		0xffff,
+		~0,
+		SDHC_PCI_QUIRK_ADMA2_ONLY_BLOCKS
+	},
+	{
+		PCI_VENDOR_O2MICRO,
+		0x8621,
+		0xffff,
+		0xffff,
+		~0,
+		SDHC_PCI_QUIRK_ADMA2_ONLY_BLOCKS
+	},
 };
 
 static void sdhc_pci_quirk_ti_hack(struct pci_attach_args *);
@@ -371,6 +388,8 @@ sdhc_pci_attach(device_t parent, device_t self, void *aux)
 		SET(sc->sc.sc_flags, SDHC_FLAG_NO_PWR0);
 	if (ISSET(flags, SDHC_PCI_QUIRK_BROKEN_ADMA))
 		SET(sc->sc.sc_flags, SDHC_FLAG_BROKEN_ADMA);
+	if (ISSET(flags, SDHC_PCI_QUIRK_ADMA2_ONLY_BLOCKS))
+		SET(sc->sc.sc_flags, SDHC_FLAG_ADMA2_ONLY_BLOCKS);
 	if (ISSET(flags, SDHC_PCI_QUIRK_RICOH_LOWER_FREQ_HACK))
 		sdhc_pci_quirk_ricoh_lower_freq_hack(pa);
 	if (ISSET(flags, SDHC_PCI_QUIRK_RICOH_SLOW_SDR50_HACK))
