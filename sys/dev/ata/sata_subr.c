@@ -98,6 +98,11 @@ sata_reset_interface(struct ata_channel *chp, bus_space_tag_t sata_t,
 
 	ata_delay(chp, 50, "sataup", flags);
 	scontrol &= ~SControl_DET_INIT;
+	/* TODO: If host supports Partial and/or Slumber, clear those IPM bits. */
+	/* TODO: Also make sure that the "External SATA Port" or */
+	/*       "Hot Plug Capable Port" bits aren't set in PxCMD reg. */
+	scontrol &= ~SControl_IPM_NOPARTIAL;
+	scontrol &= ~SControl_IPM_NOSLUMBER;
 	bus_space_write_4(sata_t, scontrol_r, 0, scontrol);
 
 	ata_delay(chp, 50, "sataup", flags);
