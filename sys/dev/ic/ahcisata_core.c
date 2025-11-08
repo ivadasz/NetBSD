@@ -1831,7 +1831,8 @@ ahci_port_status_sysctl_handle(SYSCTLFN_ARGS)
 	det = __SHIFTOUT(val, AHCI_P_SSTS_DET_MASK);
 	if (det > 4)
 		det = 0;
-	if (det == 3) {
+	if (det == 3 ||
+	    (det == 1 && (ipm == 1 || ipm == 2 || ipm == 6 || ipm == 8))) {
 		if (ipm > 8)
 			ipm = 0;
 		str = ipm_state[ipm];
