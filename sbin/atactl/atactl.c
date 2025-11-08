@@ -183,6 +183,7 @@ static char	serial[sizeof(inqbuf->atap_serial)+1];
 static void	device_identify(int, char *[]);
 static void	device_setidle(int, char *[]);
 static void	device_idle(int, char *[]);
+static void	device_sata_dipm(int, char *[]);
 static void	device_apm(int, char *[]);
 static void	device_checkpower(int, char *[]);
 static void	device_smart(int, char *[]);
@@ -194,6 +195,7 @@ static const struct command device_commands[] = {
 	{ "identify",	"",			device_identify },
 	{ "setidle",	"idle-timer",		device_setidle },
 	{ "apm",	"disable|set #",	device_apm },
+	{ "sata_dipm",	"enable|disable",	device_sata_dipm },
 	{ "setstandby",	"standby-timer",	device_setidle },
 	{ "idle",	"",			device_idle },
 	{ "standby",	"",			device_idle },
@@ -293,6 +295,10 @@ static const struct bitinfo ata_cmd_ext[] = {
 	{ 0, NULL },
 };
 
+#define SATA_HOST_APST		0x2000	/* supp. host partial to slumber */
+#define SATA_DRIVE_APST		0x4000	/* supp. host partial to slumber */
+#define SATA_DEVICE_SLEEP	0x0100
+
 static const struct bitinfo ata_sata_caps[] = {
 	{ SATA_SIGNAL_GEN1, "1.5Gb/s signaling" },
 	{ SATA_SIGNAL_GEN2, "3.0Gb/s signaling" },
@@ -300,8 +306,17 @@ static const struct bitinfo ata_sata_caps[] = {
 	{ SATA_NATIVE_CMDQ, "Native Command Queuing" },
 	{ SATA_HOST_PWR_MGMT, "Host-Initiated Interface Power Management" },
 	{ SATA_PHY_EVNT_CNT, "PHY Event Counters" },
+	{ SATA_HOST_APST, "Host Automatic Partial to Slumber" },
+	{ SATA_DRIVE_APST, "Device Automatic Partial to Slumber" },
 	{ 0, NULL },
 };
+
+#ifdef notyet
+static const struct bitinfo ata_sata_caps2[] = {
+	{ SATA_DEVSLP_TO_REDUCED, "DevSleep_To_ReducedPwrState" },
+	{ SATA_POWER_DISABLE_ALW, "Power Disable Always Enabled" },
+};
+#endif
 
 static const struct bitinfo ata_sata_feat[] = {
 	{ SATA_NONZERO_OFFSETS, "Non-zero Offset DMA" },
@@ -309,6 +324,12 @@ static const struct bitinfo ata_sata_feat[] = {
 	{ SATA_DRIVE_PWR_MGMT, "Device-Initiated Interface Power Management" },
 	{ SATA_IN_ORDER_DATA, "In-order Data Delivery" },
 	{ SATA_SW_STTNGS_PRS, "Software Settings Preservation" },
+	{ SATA_DEVICE_SLEEP, "Device Sleep" },
+	/* Automatic Partial to Slumber bit is in _caps2 and _enabled */
+	/* { SATA_EN_DRIVE_APST, "Drive Automatic Partial to Slumber" }, */
+	/* Power Disable bit differs between _features and _enabled fields */
+	/* { SATA_POWER_DISABLE, "Power Disable" }, */
+	/* { SATA_EN_POWER_DISABLE, "Power Disable" }, */
 	{ 0, NULL },
 };
 
@@ -1529,6 +1550,36 @@ device_idle(int argc, char *argv[])
 	ata_command(&req);
 
 	return;
+}
+
+/*
+ * device sata_dipm:
+ *
+ * enable/disable/control the SATA DIPM
+ * (device-initiated interface power-management) feature of the drive
+ */
+static void
+device_sata_dipm(int argc, char *argv[])
+{
+	struct atareq req;
+
+	memset(&req, 0, sizeof(req));
+	if (argc >= 1) {
+		req.command = SET_FEATURES;
+		req.timeout = 1000;
+
+		if (strcmp(argv[0], "disable") == 0) {
+			req.features = WDSF_SATA_DS;
+			req.sec_count = WDSF_SATA_DRIVE_PWR_MGMT;
+		} else if (strcmp(argv[0], "enable") == 0) {
+			req.features = WDSF_SATA_EN;
+			req.sec_count = WDSF_SATA_DRIVE_PWR_MGMT;
+		} else
+			usage();
+	} else
+		usage();
+
+	ata_command(&req);
 }
 
 /*

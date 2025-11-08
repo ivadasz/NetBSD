@@ -221,6 +221,9 @@ atacmd_to48(int cmd32)
 #define	WDSF_SATA_IN_ORDER_DATA		0x04
 #define	WDSF_SATA_ASYNC_NOTIFY		0x05
 #define	WDSF_SATA_SW_STTNGS_PRS		0x06
+#define	WDSF_SATA_DRIVE_APST		0x07
+#define	WDSF_SATA_DEVICE_SLEEP		0x09
+#define	WDSF_SATA_POWER_DISABLE		0x0b
 
 /* Subcommands for SMART (features register) */
 #define	WDSM_RD_DATA		0xd0
@@ -377,14 +380,28 @@ struct ataparams {
 #define SATA_PHY_EVNT_CNT	0x0400	/* supp. SATA Phy Event Counters log */
 #define SATA_UNLOAD_W_NCQ	0x0800	/* supp. unload w/ NCQ commands act */
 #define SATA_NCQ_PRIO		0x1000	/* supp. NCQ priority information */
-    uint16_t	atap_sata_reserved;	/* 77: */
+#define SATA_HOST_APST		0x2000	/* supp. host partial to slumber */
+#define SATA_DRIVE_APST		0x4000	/* supp. host partial to slumber */
+    uint16_t	atap_sata_caps2;	/* 77: */
+#define SATA_DEVSLP_TO_REDUCED	0x0080	/* supp. DevSleep_to_ReducedPwrState */
+#define SATA_POWER_DISABLE_ALW	0x0100	/* Power Disable always enabled */
     uint16_t	atap_sata_features_supp; /* 78: */
-#define SATA_NONZERO_OFFSETS	0x02
-#define SATA_DMA_SETUP_AUTO	0x04
-#define SATA_DRIVE_PWR_MGMT	0x08
-#define SATA_IN_ORDER_DATA	0x10
-#define SATA_SW_STTNGS_PRS	0x40
+#define SATA_NONZERO_OFFSETS	0x0002
+#define SATA_DMA_SETUP_AUTO	0x0004
+#define SATA_DRIVE_PWR_MGMT	0x0008
+#define SATA_IN_ORDER_DATA	0x0010
+#define SATA_SW_STTNGS_PRS	0x0040
+#define SATA_DEVICE_SLEEP	0x0100
+#define SATA_POWER_DISABLE	0x1000
     uint16_t	atap_sata_features_en;	/* 79: */
+#define SATA_EN_NONZERO_OFFSETS	0x0002
+#define SATA_EN_DMA_SETUP_AUTO	0x0004
+#define SATA_EN_DRIVE_PWR_MGMT	0x0008
+#define SATA_EN_IN_ORDER_DATA	0x0010
+#define SATA_EN_SW_STTNGS_PRS	0x0040
+#define SATA_EN_DRIVE_APST	0x0080	/* Drive Automatic Partial to Slumber */
+#define SATA_EN_DEVICE_SLEEP	0x0100
+#define SATA_EN_POWER_DISABLE	0x0400
     uint16_t	atap_ata_major;  	/* 80: Major version number */
 #define	WDC_VER_ATA1	0x0002
 #define	WDC_VER_ATA2	0x0004
