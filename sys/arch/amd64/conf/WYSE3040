@@ -370,7 +370,7 @@ hpet*		at acpinodebus?		# High Precision Event Timer (device)
 pckbc*		at acpi?		# PC keyboard controller
 pcppi*		at acpi?		# AT-style speaker sound
 #qemufwcfg*	at acpi?		# QEMU Firmware Configuration device
-#sdhc*		at acpi?		# SD Host Controller
+sdhc*		at acpi?		# SD Host Controller
 #sony*		at acpi?		# Sony Notebook Controller
 #spic*		at acpi?		# Sony Programmable I/O Controller
 #wsmouse*	at spic?		# mouse
@@ -463,8 +463,8 @@ sysbeep0	at pcppi?
 #tdfxdrm*	at drm?		# 3dfx (voodoo) DRM driver
 
 # DRMKMS drivers
-i915drmkms*	at pci? dev ? function ?
-intelfb*	at intelfbbus?
+#i915drmkms*	at pci? dev ? function ?
+#intelfb*	at intelfbbus?
 
 #radeon* 	at pci? dev ? function ?
 #radeondrmkmsfb* at radeonfbbus?
@@ -860,7 +860,7 @@ iwm*	at pci? dev ? function ?	# Intel Centrino 7260
 #ntwoc*	at pci? dev ? function ?	# Riscom/N2 PCI Sync Serial
 #pcn*	at pci? dev ? function ?	# AMD PCnet-PCI Ethernet
 #ral*	at pci? dev ? function ?	# Ralink Technology RT25x0 802.11a/b/g
-#re*	at pci? dev ? function ?	# Realtek 8139C+/8169/8169S/8110S
+re*	at pci? dev ? function ?	# Realtek 8139C+/8169/8169S/8110S
 #rge*	at pci? dev ? function ?	# Realtek 8125
 #rtk*	at pci? dev ? function ?	# Realtek 8129/8139
 #rtw*	at pci? dev ? function ?	# Realtek 8180L (802.11)
@@ -944,7 +944,7 @@ ihphy*	at mii? phy ?			# Intel 82577 PHYs
 #nsphyter* at mii? phy ? 		# NS83843 PHYs
 #pnaphy* at mii? phy ?			# generic HomePNA PHYs
 #qsphy*	at mii? phy ?			# Quality Semiconductor QS6612 PHYs
-#rgephy* at mii? phy ?			# Realtek 8169S/8110 internal PHYs
+rgephy* at mii? phy ?			# Realtek 8169S/8110 internal PHYs
 #rlphy*	at mii? phy ?			# Realtek 8139/8201L PHYs
 #smscphy* at mii? phy ?			# SMSC LAN87xx PHYs
 #sqphy*	at mii? phy ?			# Seeq 80220/80221/80223 PHYs
@@ -1113,7 +1113,7 @@ btsco* at bthub?
 # SD/MMC/SDIO Controller and Device support
 
 # SD/MMC controller
-sdhc*	at pci?		# SD Host Controller
+#sdhc*	at pci?		# SD Host Controller
 #rtsx*	at pci?		# Realtek RTS5209/RTS5229 Card Reader
 #sdhc*	at cardbus?	# SD Host Controller
 sdmmc*	at sdhc?	# SD/MMC bus
