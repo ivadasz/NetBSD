@@ -53,6 +53,10 @@ device	coretemp: sysmon_envsys
 attach	coretemp at cpufeaturebus
 file	arch/x86/x86/coretemp.c		coretemp
 
+device	corepower: sysmon_envsys
+attach	corepower at cpufeaturebus
+file	arch/x86/x86/corepower.c	corepower
+
 device	est
 attach	est at cpufeaturebus
 file	arch/x86/x86/est.c		est

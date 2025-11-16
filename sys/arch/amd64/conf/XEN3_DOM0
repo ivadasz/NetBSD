@@ -95,6 +95,7 @@ options 	SYSCTL_INCLUDE_DESCR	# Include sysctl descriptions in kernel
 #acpicpu*	at cpu?		# ACPI CPU (including frequency scaling)
 				# needs x86_cpu_idle_halt in cpu.c (!xenpv)
 coretemp*	at cpu?		# Intel on-die thermal sensor
+corepower*	at cpu?		# Intel on-die power estimation
 est0		at cpu0		# Intel Enhanced SpeedStep (non-ACPI)
 #hyperv0 	at cpu0		# Microsoft Hyper-V
 #odcm0		at cpu0		# On-demand clock modulation

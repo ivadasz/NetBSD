@@ -606,6 +606,13 @@ cpu_rescan(device_t self, const char *ifattr, const int *locators)
 					 CFARGS(.iattr = "cpufeaturebus"));
 		}
 
+		if (ci->ci_power == NULL) {
+			cfaa.name = "power";
+			ci->ci_power =
+			    config_found(self, &cfaa, NULL,
+					 CFARGS(.iattr = "cpufeaturebus"));
+		}
+
 		if (ci->ci_vm == NULL) {
 			cfaa.name = "vm";
 			ci->ci_vm =
@@ -631,6 +638,9 @@ cpu_childdetached(device_t self, device_t child)
 
 	if (ci->ci_temperature == child)
 		ci->ci_temperature = NULL;
+
+	if (ci->ci_power == child)
+		ci->ci_power = NULL;
 
 	if (ci->ci_vm == child)
 		ci->ci_vm = NULL;
