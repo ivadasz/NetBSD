@@ -57,6 +57,10 @@ device	corepower: sysmon_envsys
 attach	corepower at cpufeaturebus
 file	arch/x86/x86/corepower.c	corepower
 
+device	corecstat: sysmon_envsys
+attach	corecstat at cpufeaturebus
+file	arch/x86/x86/corecstat.c	corecstat
+
 device	est
 attach	est at cpufeaturebus
 file	arch/x86/x86/est.c		est

@@ -184,6 +184,7 @@ struct cpu_info {
 	device_t	ci_padlock;	/* VIA PadLock private storage */
 	device_t	ci_temperature;	/* Intel coretemp(4) or equivalent */
 	device_t	ci_power;	/* Intel corepower(4) or equivalent */
+	device_t	ci_cstat;	/* Intel corecstat(4) or equivalent */
 	device_t	ci_vm;		/* Virtual machine guest driver */
 
 	/*

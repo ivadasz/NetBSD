@@ -1332,6 +1332,12 @@
 #define MSR_MTRRfix4K_F8000	0x26f
 #define MSR_CR_PAT		0x277
 #define MSR_MTRRdefType		0x2ff
+#define MSR_PKG_C3_RESIDENCY	0x3f8	/* Nehalem and later */
+#define MSR_PKG_C6_RESIDENCY	0x3f9	/* Nehalem and later */
+#define MSR_PKG_C7_RESIDENCY	0x3fa	/* Nehalem and later */
+#define MSR_CORE_C3_RESIDENCY	0x3fc	/* Nehalem and later */
+#define MSR_CORE_C6_RESIDENCY	0x3fd	/* Nehalem and later */
+#define MSR_CORE_C7_RESIDENCY	0x3fe	/* Sandy Bridge and later */
 #define MSR_MC0_CTL		0x400
 #define MSR_MC0_STATUS		0x401
 #define MSR_MC0_ADDR		0x402
@@ -1359,6 +1365,10 @@
 #define MSR_PP0_ENERGY_STATUS	0x639
 #define MSR_PP1_ENERGY_STATUS	0x641
 #define MSR_PLATFORM_ENERGY_COUNTER 0x64d /* Skylake and later */
+#define MSR_PKG_C2_RESIDENCY	0x60d	/* Sandy Bridge and later */
+#define MSR_PKG_C8_RESIDENCY	0x630	/* Haswell Family 06_45H and later */
+#define MSR_PKG_C9_RESIDENCY	0x631	/* Haswell Family 06_45H and later */
+#define MSR_PKG_C10_RESIDENCY	0x632	/* Haswell Family 06_45H and later */
 #define MSR_X2APIC_BASE		0x800	/* 0x800 - 0xBFF */
 #define  MSR_X2APIC_ID			0x002	/* x2APIC ID. (RO) */
 #define  MSR_X2APIC_VERS		0x003	/* Version. (RO) */

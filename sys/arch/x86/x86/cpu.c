@@ -613,6 +613,13 @@ cpu_rescan(device_t self, const char *ifattr, const int *locators)
 					 CFARGS(.iattr = "cpufeaturebus"));
 		}
 
+		if (ci->ci_cstat == NULL) {
+			cfaa.name = "cstat";
+			ci->ci_cstat =
+			    config_found(self, &cfaa, NULL,
+					 CFARGS(.iattr = "cpufeaturebus"));
+		}
+
 		if (ci->ci_vm == NULL) {
 			cfaa.name = "vm";
 			ci->ci_vm =
@@ -641,6 +648,9 @@ cpu_childdetached(device_t self, device_t child)
 
 	if (ci->ci_power == child)
 		ci->ci_power = NULL;
+
+	if (ci->ci_cstat == child)
+		ci->ci_cstat = NULL;
 
 	if (ci->ci_vm == child)
 		ci->ci_vm = NULL;

@@ -35,6 +35,7 @@ options 	PCPU_IDT	# Per CPU IDT
 acpicpu*	at cpu?		# ACPI CPU (including frequency scaling)
 coretemp*	at cpu?		# Intel on-die thermal sensor
 corepower*	at cpu?		# Intel on-die power estimation
+corecstat*	at cpu?		# Intel C-State statistics
 est0		at cpu0		# Intel Enhanced SpeedStep (non-ACPI)
 odcm0		at cpu0		# On-demand clock modulation
 padlock0	at cpu0		# VIA PadLock
