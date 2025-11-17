@@ -86,6 +86,7 @@ options 	SPECTRE_V2_GCC_MITIGATION
 acpicpu*	at cpu?		# ACPI CPU (including frequency scaling)
 coretemp*	at cpu?		# Intel on-die thermal sensor
 corepower*	at cpu?		# Intel on-die power estimation
+corecstat*	at cpu?		# Intel C-State Statistics
 est0		at cpu0		# Intel Enhanced SpeedStep (non-ACPI)
 #hyperv0 	at cpu0		# Microsoft Hyper-V
 #odcm0		at cpu0		# On-demand clock modulation
