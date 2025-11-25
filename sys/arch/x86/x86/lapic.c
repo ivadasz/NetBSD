@@ -593,6 +593,12 @@ lapic_reset(void)
 	lapic_writereg(LAPIC_LVT_TIMER,
 	    LAPIC_LVT_TMM_PERIODIC | LAPIC_LVT_MASKED);
 	lapic_writereg(LAPIC_DCR_TIMER, LAPIC_DCRT_DIV1);
+	if (curcpu() != &cpu_info_primary) {
+		int c = getticks();
+		// Wait until AP core increments hardclock_ticks.
+		while (getticks() == c)
+			x86_pause();
+	}
 	lapic_writereg(LAPIC_ICR_TIMER, lapic_tval);
 	lapic_writereg(LAPIC_LVT_TIMER,
 	    LAPIC_LVT_TMM_PERIODIC | LAPIC_TIMER_VECTOR);

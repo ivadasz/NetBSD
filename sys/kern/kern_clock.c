@@ -305,18 +305,27 @@ hardclock(struct clockframe *frame)
 	struct lwp *l;
 	struct cpu_info *ci;
 
-	clockrnd_sample(&hardclockrnd);
-
 	ci = curcpu();
 	l = ci->ci_onproc;
 
+	if (CPU_IS_PRIMARY(ci)) {
+		atomic_store_relaxed(&hardclock_ticks,
+		    atomic_load_relaxed(&hardclock_ticks) + 1);
+		tc_ticktock();
+	}
+
 	ptimer_tick(l, CLKF_USERMODE(frame));
+	clockrnd_sample(&hardclockrnd);
 
 	/*
 	 * If no separate statistics clock is available, run it from here.
 	 */
 	if (stathz == 0)
 		statclock(frame);
+
+	if ((--ci->ci_schedstate.spc_ticks) <= 0)
+		sched_tick(ci);
+
 	/*
 	 * If no separate schedclock is provided, call it here
 	 * at about 16 Hz.
@@ -326,14 +335,6 @@ hardclock(struct clockframe *frame)
 			schedclock(l);
 			ci->ci_schedstate.spc_schedticks = hardscheddiv;
 		}
-	}
-	if ((--ci->ci_schedstate.spc_ticks) <= 0)
-		sched_tick(ci);
-
-	if (CPU_IS_PRIMARY(ci)) {
-		atomic_store_relaxed(&hardclock_ticks,
-		    atomic_load_relaxed(&hardclock_ticks) + 1);
-		tc_ticktock();
 	}
 
 	/*
