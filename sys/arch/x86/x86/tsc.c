@@ -144,12 +144,15 @@ tsc_is_invariant(void)
 		 * AMD Errata 778: Processor Core Time Stamp Counters May
 		 * Experience Drift
 		 *
-		 * This affects all family 15h and family 16h processors.
+		 * This affects family 15h and family 16h processors before
+		 * model 30h.
 		 */
 		switch (CPUID_TO_FAMILY(ci->ci_signature)) {
 		case 0x15:
 		case 0x16:
-			return false;
+			if (CPUID_TO_MODEL(ci->ci_signature) < 0x30)
+				return false;
+			break;
 		}
 	}
 
