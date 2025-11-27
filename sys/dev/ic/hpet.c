@@ -204,7 +204,7 @@ uint64_t
 hpet_tsc_freq(void)
 {
 	struct hpet_softc *sc;
-	uint64_t td0, td, val, freq;
+	uint64_t td0, td1, td2, td3, val, freq;
 	uint32_t hd0, hd;
 	int s;
 
@@ -214,10 +214,11 @@ hpet_tsc_freq(void)
 	sc = hpet0;
 
 	s = splhigh();
-	(void)cpu_counter();
+	(void)cpu_counter_mfence();
 	(void)bus_space_read_4(sc->sc_memt, sc->sc_memh, HPET_MCOUNT_LO);
+	td0 = cpu_counter_mfence();
 	hd0 = bus_space_read_4(sc->sc_memt, sc->sc_memh, HPET_MCOUNT_LO);
-	td0 = cpu_counter();
+	td1 = cpu_counter_mfence();
 	splx(s);
 
 	/*
@@ -235,14 +236,15 @@ hpet_tsc_freq(void)
 	 * advanced and round result to the nearest 1000.
 	 */
 	s = splhigh();
-	(void)cpu_counter();
+	(void)cpu_counter_mfence();
 	(void)bus_space_read_4(sc->sc_memt, sc->sc_memh, HPET_MCOUNT_LO);
+	td2 = cpu_counter_mfence();
 	hd = bus_space_read_4(sc->sc_memt, sc->sc_memh, HPET_MCOUNT_LO);
-	td = cpu_counter();
+	td3 = cpu_counter_mfence();
 	splx(s);
 
 	val = (uint64_t)(hd - hd0) * sc->sc_period / 100000000;
-	freq = (td - td0) * 10000000 / val;
+	freq = (td2 + td3 - td0 - td1) * (10000000/2) / val;
 	return rounddown(freq + 500, 1000);
 }
 

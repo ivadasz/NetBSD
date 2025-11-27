@@ -672,13 +672,14 @@ lapic_calibrate_timer(bool secondpass)
 		uint64_t l0, l1, t0, t1;
 
 		(void)cpu_counter();
-		t0 = cpu_counter();
+		t0 = cpu_counter_mfence();
 		l0 = lapic_gettick();
-		t0 += cpu_counter();
+		t0 += cpu_counter_mfence();
 		DELAY(50000);
-		t1 = cpu_counter();
+		(void)lapic_gettick();
+		t1 = cpu_counter_mfence();
 		l1 = lapic_gettick();
-		t1 += cpu_counter();
+		t1 += cpu_counter_mfence();
 
 		tmp = (l0 - l1) * cpu_frequency(ci) / ((t1 - t0 + 1) / 2);
 		lapic_per_second = rounddown(tmp + 500, 1000);
