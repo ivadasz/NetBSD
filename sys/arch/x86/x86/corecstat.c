@@ -122,7 +122,7 @@ corecstat_match(device_t parent, cfdata_t cf, void *aux)
 	/*
 	 * Only attach on the first Package ID for now (only Package C-States).
 	 */
-	if (ci->ci_core_id != 0)
+	if (ci->ci_core_id != 0 || ci->ci_smt_id != 0)
 		return 0;
 
 	cpu_model = CPUID_TO_MODEL(ci->ci_signature);
