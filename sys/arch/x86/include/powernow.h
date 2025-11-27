@@ -101,9 +101,9 @@
 #define PN8_STA_SFID(x)			(((x) >> 8) & 0x3f)
 #define PN8_STA_MFID(x)			(((x) >> 16) & 0x3f)
 #define PN8_STA_PENDING(x)		(((x) >> 31) & 0x01)
-#define PN8_STA_CVID(x)			(((x) >> 32) & 0x1f)
-#define PN8_STA_SVID(x)			(((x) >> 40) & 0x1f)
-#define PN8_STA_MVID(x)			(((x) >> 48) & 0x1f)
+#define PN8_STA_CVID(x)			(((x) >> 32) & 0x3f)
+#define PN8_STA_SVID(x)			(((x) >> 40) & 0x3f)
+#define PN8_STA_MVID(x)			(((x) >> 48) & 0x3f)
 
 #define COUNT_OFF_IRT(irt)		DELAY(10 * (1 << (irt)))
 #define COUNT_OFF_VST(vst)		DELAY(20 * (vst))
